@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package>
+  <name>srrg_hbst</name>
+  <version>0.0.0</version>
+  <description>The srrg_hbst package</description>
+  <maintainer email="schlegel@diag.uniroma1.it">Dominik Schlegel</maintainer>
+  <license>BSD</license>
+  <author email="grisetti@diag.uniroma1.it">Giorgio Grisetti</author>
+  <author email="schlegel@diag.uniroma1.it">Dominik Schlegel</author>
+  <buildtool_depend>catkin</buildtool_depend>
+</package>
