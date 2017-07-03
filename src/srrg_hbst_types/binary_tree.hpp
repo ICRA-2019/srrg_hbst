@@ -24,7 +24,8 @@ namespace srrg_hbst {
     BinaryTree(const uint64_t& identifier_,
                const MatchableVector& matchables_): identifier(identifier_),
                                                     root(new BinaryNodeType_(matchables_)) {
-      assert(0 != root);
+      _matchables.clear();
+      _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
     }
 
     //ds construct tree upon allocation on filtered descriptors: with bit mask
@@ -32,7 +33,8 @@ namespace srrg_hbst {
                const MatchableVector& matchables_,
                Descriptor bit_mask_): identifier(identifier_),
                                       root(new BinaryNodeType_(matchables_, bit_mask_)) {
-      assert(0 != root);
+      _matchables.clear();
+      _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
     }
 
     //ds construct tree with fixed split order
@@ -40,39 +42,30 @@ namespace srrg_hbst {
                const MatchableVector& matchables_,
                std::vector<uint32_t> split_order_): identifier(identifier_),
                                                     root(new BinaryNodeType_(matchables_, split_order_)) {
-      assert(0 != root);
+      _matchables.clear();
+      _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
     }
 
 #ifdef SRRG_HBST_HAS_OPENCV
 
     //ds wrapped constructors - only available if OpenCV is present on building system
     BinaryTree(const uint64_t& identifier_,
-               const cv::Mat& matchables_): identifier(identifier_),
-                                            root(new BinaryNodeType_(getMatchablesWithIndex(matchables_))) {
-      assert(0 != root);
-    }
-
+               const cv::Mat& matchables_): BinaryTree(identifier_, getMatchablesWithIndex(matchables_)) {}
     BinaryTree(const uint64_t& identifier_,
                const cv::Mat& matchables_,
-               Descriptor bit_mask_): identifier(identifier_),
-                                      root(new BinaryNodeType_(getMatchablesWithIndex(matchables_), bit_mask_)) {
-      assert(0 != root);
-    }
-
+               Descriptor bit_mask_): identifier(identifier_, getMatchablesWithIndex(matchables_), bit_mask_) {}
     BinaryTree(const uint64_t& identifier_,
                const cv::Mat& matchables_,
-               std::vector<uint32_t> split_order_): identifier(identifier_),
-                                                    root(new BinaryNodeType_(getMatchablesWithIndex(matchables_), split_order_)) {
-      assert(0 != root);
-    }
+               std::vector<uint32_t> split_order_): identifier(identifier_, getMatchablesWithIndex(matchables_), split_order_) {}
 
 #endif
 
     //ds free all nodes in the tree
     virtual ~BinaryTree() {
 
-      //ds erase all nodes (and descriptors)
-      _displant();
+      //ds erase all nodes and matchables contained in the tree
+      clearNodes();
+      clearMatchables();
     }
 
     //ds disable default construction
@@ -88,6 +81,9 @@ namespace srrg_hbst {
 
     //ds root node
     BinaryNodeType_* root;
+
+    //! @brief all matchables contained in the tree
+    MatchableVector _matchables;
 
   //ds access (shared pointer wrappings)
   public:
@@ -295,11 +291,8 @@ namespace srrg_hbst {
 
 #endif
 
-  //ds helpers
-  private:
-
-    //ds delete tree
-    void _displant() {
+    //! @brief free all tree nodes
+    void clearNodes() {
 
       //ds nodes holder
       std::vector<const BinaryNodeType_*> nodes_collection;
@@ -311,10 +304,19 @@ namespace srrg_hbst {
       for (const BinaryNodeType_* node: nodes_collection) {
         delete node;
       }
-
-      //ds clear nodes vector
       nodes_collection.clear();
     }
+
+    //! @brief free all matchables contained in the tree
+    void clearMatchables() {
+      for (const BinaryMatchable256b* matchable: _matchables) {
+        delete matchable;
+      }
+      _matchables.clear();
+    }
+
+  //ds helpers
+  private:
 
     void _setNodesRecursive(const BinaryNodeType_* node_, std::vector<const BinaryNodeType_*>& nodes_collection_) const {
 

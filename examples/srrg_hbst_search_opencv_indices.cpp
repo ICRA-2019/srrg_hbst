@@ -133,11 +133,6 @@ int32_t main(int32_t argc, char** argv) {
   for (const BinaryTree256b* tree: trees) {
     delete tree;
   }
-  for (const BinaryTree256b::MatchableVector matchables: matchables_per_image) {
-    for (const BinaryMatchable256b* matchable: matchables) {
-      delete matchable;
-    }
-  }
   matchables_per_image.clear();
 
   //ds done
