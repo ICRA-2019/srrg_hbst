@@ -5,12 +5,12 @@
 
 namespace srrg_hbst {
 
-  template<typename BinaryMatchableType_, uint64_t maximum_search_depth_ = 50, typename real_precision_ = double>
+  template<typename BinaryMatchableType_, typename real_precision_ = double>
   class BinaryNode
   {
 
     //ds readability
-    using Node = BinaryNode<BinaryMatchableType_, maximum_search_depth_, real_precision_>;
+    using Node = BinaryNode<BinaryMatchableType_, real_precision_>;
 
   //ds template forwarding
   public:
@@ -80,7 +80,7 @@ namespace srrg_hbst {
         }
 
         //ds if best was found - we can spawn leaves
-        if (index_split_bit != -1 && depth < maximum_search_depth_) {
+        if (index_split_bit != -1) {
 
           //ds check if we have enough data to split (NOT REQUIRED IF DEPTH IS SET ACCORDINGLY)
           if (0 < number_of_set_bits_total && 0.5 > partitioning) {
@@ -177,7 +177,7 @@ namespace srrg_hbst {
         }
 
         //ds if best was found - we can spawn leaves
-        if (-1 != index_split_bit && maximum_search_depth_ > depth) {
+        if (-1 != index_split_bit) {
 
           //ds check if we have enough data to split
           if(0 < number_of_set_bits_total && 0.5 > partitioning) {

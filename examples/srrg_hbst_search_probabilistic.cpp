@@ -4,10 +4,9 @@
 
 //ds current setup
 #define MAXIMUM_DISTANCE_HAMMING 25
-#define BSTREE_MAXIMUM_DEPTH 75
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::ProbabilisticMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
-typedef srrg_hbst::ProbabilisticNode<Matchable, BSTREE_MAXIMUM_DEPTH> Node;
+typedef srrg_hbst::ProbabilisticNode<Matchable> Node;
 typedef srrg_hbst::ProbabilisticTree<Node, MAXIMUM_DISTANCE_HAMMING> Tree;
 const double RAND_MAX_AS_DOUBLE = static_cast<double>(RAND_MAX);
 

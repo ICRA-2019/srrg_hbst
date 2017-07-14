@@ -4,10 +4,9 @@
 
 //ds current setup
 #define MAXIMUM_DISTANCE_HAMMING 25
-#define BSTREE_MAXIMUM_DEPTH 75
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
-typedef srrg_hbst::BinaryNode<Matchable, BSTREE_MAXIMUM_DEPTH> Node;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node, MAXIMUM_DISTANCE_HAMMING> Tree;
 
 //ds dummy descriptor generation

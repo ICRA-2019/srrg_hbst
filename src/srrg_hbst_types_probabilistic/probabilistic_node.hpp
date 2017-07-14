@@ -5,12 +5,12 @@
 namespace srrg_hbst {
 
   //ds Node template specialization for descriptors of type: CDescriptorBinaryProbabilistic
-  template<typename ProbabilisticMatchableType_, uint64_t maximum_search_depth_ = 50, typename real_precision_ = double>
-  class ProbabilisticNode: public BinaryNode<ProbabilisticMatchableType_, maximum_search_depth_, real_precision_>
+  template<typename ProbabilisticMatchableType_, typename real_precision_ = double>
+  class ProbabilisticNode: public BinaryNode<ProbabilisticMatchableType_, real_precision_>
   {
     //ds readability
-    using BaseNode = BinaryNode<ProbabilisticMatchableType_, maximum_search_depth_, real_precision_>;
-    using Node     = ProbabilisticNode<ProbabilisticMatchableType_, maximum_search_depth_, real_precision_>;
+    using BaseNode = BinaryNode<ProbabilisticMatchableType_, real_precision_>;
+    using Node     = ProbabilisticNode<ProbabilisticMatchableType_, real_precision_>;
 
   //ds template forwarding
   public: EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -97,7 +97,7 @@ namespace srrg_hbst {
         }
 
         //ds if best was found - we can spawn leaves
-        if(-1 != this->index_split_bit && maximum_search_depth_ > this->depth)
+        if(-1 != this->index_split_bit)
         {
           //ds compute distance for this index (0.0 is perfect)
           this->partitioning = std::fabs(0.5-this->_getOnesFraction(this->index_split_bit, this->matchables, this->number_of_set_bits_total));
