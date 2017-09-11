@@ -11,108 +11,143 @@
 
 namespace srrg_hbst {
 
-  template<uint32_t descriptor_size_bits_ = 256>
-  class BinaryMatchable {
+//! @class default matching object (wraps the input descriptors and more)
+//! @param descriptor_size_bits_ number of bits for the native descriptor
+template<uint32_t descriptor_size_bits_ = 256>
+class BinaryMatchable {
 
-  //ds template forwarding
-  public:
+//ds template forwarding
+public:
 
-    typedef std::bitset<descriptor_size_bits_> Descriptor;
+  //! @brief descriptor type
+  typedef std::bitset<descriptor_size_bits_> Descriptor;
 
-  //ds shared properties
-  public:
+//ds shared properties
+public:
 
-    //ds descriptor size is set identically for all instances in the current setup
-    static const uint32_t descriptor_size_bits  = descriptor_size_bits_;
-    static const uint32_t descriptor_size_bytes = descriptor_size_bits_/8;
+  //! @brief descriptor size in bits (for all matchables)
+  static const uint32_t descriptor_size_bits = descriptor_size_bits_;
 
-  //ds ctor/dtor
-  public:
+  //! @brief descriptor size in bytes (for all matchables)
+  static const uint32_t descriptor_size_bytes = descriptor_size_bits_/8;
 
-    BinaryMatchable(const uint64_t& identifier_,
-                    const Descriptor& descriptor_): identifier(identifier_),
-                                                    pointer(0),
-                                                    descriptor(descriptor_) {}
+//ds ctor/dtor
+public:
 
-    BinaryMatchable(const void* pointer_,
-                    const Descriptor& descriptor_): identifier(0),
-                                                    pointer(pointer_),
-                                                    descriptor(descriptor_) {}
+  //! @brief default constructor: DISABLED
+  BinaryMatchable() = delete;
 
-    BinaryMatchable(const uint64_t& identifier_,
-                    const void* pointer_,
-                    const Descriptor& descriptor_): identifier(identifier_),
-                                                    pointer(pointer_),
-                                                    descriptor(descriptor_) {}
+  //! @brief constructor with index for association
+  //! @param[in] identifier_ association index
+  //! @param[in] descriptor_ HBST descriptor
+  //! @param[in] identifier_tree_ HBST tree identifier
+  BinaryMatchable(const uint64_t& identifier_,
+                  const Descriptor& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): identifier(identifier_),
+                                                                       pointer(0),
+                                                                       descriptor(descriptor_),
+                                                                       identifier_tree(identifier_tree_) {}
 
+  //! @brief constructor with an object pointer for association
+  //! @param[in] pointer_ associated object
+  //! @param[in] descriptor_ HBST descriptor
+  //! @param[in] identifier_tree_ HBST tree identifier
+  BinaryMatchable(const void* pointer_,
+                  const Descriptor& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): identifier(0),
+                                                                       pointer(pointer_),
+                                                                       descriptor(descriptor_),
+                                                                       identifier_tree(identifier_tree_) {}
+
+  //! @brief constructor with index and object pointer for association
+  //! @param[in] identifier_ association index
+  //! @param[in] pointer_ associated object
+  //! @param[in] descriptor_ HBST descriptor
+  //! @param[in] identifier_tree_ HBST tree identifier
+  BinaryMatchable(const uint64_t& identifier_,
+                  const void* pointer_,
+                  const Descriptor& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): identifier(identifier_),
+                                                                       pointer(pointer_),
+                                                                       descriptor(descriptor_),
+                                                                       identifier_tree(identifier_tree_) {}
+
+//ds wrapped constructors - only available if OpenCV is present on building system
 #ifdef SRRG_HBST_HAS_OPENCV
 
-    //ds wrapped constructors - only available if OpenCV is present on building system
-    BinaryMatchable(const uint64_t& identifier_,
-                    const cv::Mat& descriptor_): identifier(identifier_),
-                                                 pointer(0),
-                                                 descriptor(getDescriptor(descriptor_)) {}
+  BinaryMatchable(const uint64_t& identifier_,
+                  const cv::Mat& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): BinaryMatchable(identifier_,
+                                                         getDescriptor(descriptor_),
+                                                         identifier_tree_) {}
 
-    BinaryMatchable(const void* pointer_,
-                    const cv::Mat& descriptor_): identifier(0),
-                                                 pointer(pointer_),
-                                                 descriptor(getDescriptor(descriptor_)) {}
+  BinaryMatchable(const void* pointer_,
+                  const cv::Mat& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): BinaryMatchable(pointer_,
+                                                         getDescriptor(descriptor_),
+                                                         identifier_tree_) {}
 
-    BinaryMatchable(const uint64_t& identifier_,
-                    const void* pointer_,
-                    const cv::Mat& descriptor_): identifier(identifier_),
-                                                 pointer(pointer_),
-                                                 descriptor(getDescriptor(descriptor_)) {}
+  BinaryMatchable(const uint64_t& identifier_,
+                  const void* pointer_,
+                  const cv::Mat& descriptor_,
+                  const uint64_t& identifier_tree_ = 0): BinaryMatchable(identifier_,
+                                                         pointer_,
+                                                         getDescriptor(descriptor_),
+                                                         identifier_tree_) {}
 
 #endif
 
-    ~BinaryMatchable() {}
+  //! @brief default destructor: nothing to do
+  ~BinaryMatchable() {}
 
-    //ds disable default construction
-    BinaryMatchable() = delete;
+//ds functionality
+public:
 
-  //ds functionality
-  public:
-
-    //ds computes the distance to another matchable
-    inline const uint32_t distance(const BinaryMatchable<descriptor_size_bits_>* matchable_query_) const {
-      return (matchable_query_->descriptor^this->descriptor).count();
-    }
+  //! @brief computes the classic Hamming descriptor distance between this and another matchable
+  //! @param[in] matchable_query_ the matchable to compare this against
+  //! @returns the matching distance as integer
+  inline const uint32_t distanceHamming(const BinaryMatchable<descriptor_size_bits_>* matchable_query_) const {
+    return (matchable_query_->descriptor^this->descriptor).count();
+  }
 
 #ifdef SRRG_HBST_HAS_OPENCV
 
-    //ds descriptor wrapping - only available if OpenCV is present on building system
-    static inline Descriptor getDescriptor(const cv::Mat& descriptor_cv_) {
-      Descriptor binary_descriptor(descriptor_size_bits_);
-      for (uint64_t byte_index = 0; byte_index < descriptor_size_bytes; ++byte_index) {
+  //! @brief descriptor wrapping - only available if OpenCV is present on building system
+  //! @param[in] descriptor_cv_ opencv descriptor to convert into HBST format
+  static inline Descriptor getDescriptor(const cv::Mat& descriptor_cv_) {
+    Descriptor binary_descriptor(descriptor_size_bits_);
+    for (uint64_t byte_index = 0; byte_index < descriptor_size_bytes; ++byte_index) {
 
-        //ds get minimal datafrom cv::mat
-        const uchar value = descriptor_cv_.at<uchar>(byte_index);
+      //ds get minimal datafrom cv::mat
+      const uchar value = descriptor_cv_.at<uchar>(byte_index);
 
-        //ds get bitstring
-        for (uint8_t v = 0; v < 8; ++v) {
-          binary_descriptor[byte_index*8+v] = (value >> v) & 1;
-        }
+      //ds get bitstring
+      for (uint8_t v = 0; v < 8; ++v) {
+        binary_descriptor[byte_index*8+v] = (value >> v) & 1;
       }
-      return binary_descriptor;
     }
+    return binary_descriptor;
+  }
 
 #endif
 
-  //ds attributes
-  public:
+//ds attributes
+public:
 
-    //ds unique descriptor identifier
-    const uint64_t identifier;
+  //! @brief unique descriptor identifier
+  const uint64_t identifier;
 
-    //ds a connected object for correspondence handling (optional) - when using this field one must ensure the permanence of the referenced object!
-    const void* pointer;
+  //! @brief a connected object for correspondence handling (optional) - when using this field one must ensure the permanence of the referenced object!
+  const void* pointer;
 
-    //ds descriptor data string vector
-    const Descriptor descriptor;
-  };
+  //! @brief descriptor data string vector
+  const Descriptor descriptor;
 
-  typedef BinaryMatchable<512> BinaryMatchable512b;
-  typedef BinaryMatchable<256> BinaryMatchable256b;
-  typedef BinaryMatchable<128> BinaryMatchable128b;
+  //! @brief tree reference index to which this matchable is belonging
+  const uint64_t identifier_tree;
+};
+
+typedef BinaryMatchable<512> BinaryMatchable512b;
+typedef BinaryMatchable<256> BinaryMatchable256b;
+typedef BinaryMatchable<128> BinaryMatchable128b;
 }

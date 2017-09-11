@@ -7,7 +7,7 @@
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
-typedef srrg_hbst::BinaryTree<Node, MAXIMUM_DISTANCE_HAMMING> Tree;
+typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds dummy descriptor generation
 const std::shared_ptr<const Tree::MatchableVector> getDummyMatchables(const uint64_t& number_of_matchables_) {
@@ -44,8 +44,6 @@ int32_t main(int32_t argc, char** argv) {
 
   //ds query descriptor pool
   const std::shared_ptr<const Tree::MatchableVector> matchables_query = getDummyMatchables(5000);
-
-
 
   //ds get matches (opencv IN/OUT style)
   Tree::MatchVector matches1;
