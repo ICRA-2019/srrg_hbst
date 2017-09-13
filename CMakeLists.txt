@@ -7,8 +7,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message("build type: ${CMAKE_BUILD_TYPE}")
 
-#ds add c++11 support, mediocre optimization, all warnings
-add_definitions(-Ofast -march=native -Wall -pedantic -std=c++11)
+#ds add gnu++11 -march=native support, mediocre optimization, all warnings
+add_definitions(-Ofast -march=native -Wall -pedantic -std=gnu++11 -march=native)
 
 #ds locate external packages: Eigen (currently not required)
 find_package(Eigen3 QUIET)
