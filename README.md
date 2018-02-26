@@ -1,8 +1,6 @@
-# HBST: Hamming Binary Search Tree Header-only library
+        HBST: Hamming Binary Search Tree Header-only library
 Contributors: Dominik Schlegel, Giorgio Grisetti
-
-# [* Check out the Wiki! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
-
+## [* check out the wiki for figures and videos! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 Supported platforms:
 - UNIX x86/x64
 - Windows x86/x64 (untested) <br/>
@@ -10,6 +8,7 @@ Supported platforms:
 Dependencies:
 - CMake 2.8.3+ (https://cmake.org/)
 - C++ 11 STL libraries <br/>
+- GCC 5 or higher
 
 Optionals:
 - Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project)
@@ -36,8 +35,12 @@ The 2 base classes: `BinaryNode` and `BinaryMatchable` (see `src/srrg_hbst_types
 Users might specify their own, augmented binary descriptor and node classes with specific leaf spawning <br>
 Two variants of subclassing are already provided in `src/srrg_hbst_types_probabilistic`
 
+## It doesn't work?
+[Open an issue](https://gitlab.com/srrg-software/srrg_hbst/issues) or contact the maintainer (see package.xml)
 
 ## Related publications
+Please cite our most recent publication when using this library :) <br>
+
 IROS 2016 - Visual localization and loop closing using decision trees and binary features: http://ieeexplore.ieee.org/document/7759679/ (DOI: 10.1109/IROS.2016.7759679)
 
     @inproceedings{schlegel2016visual,
