@@ -1,4 +1,4 @@
-        HBST: Hamming Binary Search Tree Header-only library
+    HBST: Hamming Binary Search Tree Header-only library
 Contributors: Dominik Schlegel, Giorgio Grisetti
 ## [* check out the wiki for figures and videos! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 Supported platforms:
