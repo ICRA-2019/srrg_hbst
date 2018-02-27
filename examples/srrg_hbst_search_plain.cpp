@@ -3,7 +3,6 @@
 #include "srrg_hbst_types/binary_tree.hpp"
 
 //ds current setup
-#define MAXIMUM_DISTANCE_HAMMING 25
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
@@ -45,18 +44,20 @@ int32_t main(int32_t argc, char** argv) {
   //ds query descriptor pool
   const std::shared_ptr<const Tree::MatchableVector> matchables_query = getDummyMatchables(5000);
 
+
+
   //ds get matches (opencv IN/OUT style)
   Tree::MatchVector matches1;
-  hbst_tree.match(*matchables_query, matches1);
+  hbst_tree.matchLazy(*matchables_query, matches1);
 
   //ds get matches directly
-  const std::shared_ptr<const Tree::MatchVector> matches2 = hbst_tree.getMatches(matchables_query);
+  const std::shared_ptr<const Tree::MatchVector> matches2 = hbst_tree.getMatchesLazy(matchables_query);
 
   //ds match count functions (FAST)
   const uint64_t number_of_matches      = hbst_tree.getNumberOfMatches(matchables_query);
   const double matching_ratio           = hbst_tree.getMatchingRatio(matchables_query);
-  const uint64_t number_of_matches_lazy = hbst_tree.getNumberOfMatchesLazyEvaluation(matchables_query);
-  const double matching_ratio_lazy      = hbst_tree.getMatchingRatioLazyEvaluation(matchables_query);
+  const uint64_t number_of_matches_lazy = hbst_tree.getNumberOfMatchesLazy(matchables_query);
+  const double matching_ratio_lazy      = hbst_tree.getMatchingRatioLazy(matchables_query);
 
   std::cerr << "matches: " << number_of_matches << "/" << matchables_query->size() <<  std::endl;
   std::cerr << "  ratio: " << matching_ratio << std::endl;

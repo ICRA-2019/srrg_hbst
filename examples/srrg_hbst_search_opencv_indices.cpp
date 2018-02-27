@@ -35,7 +35,7 @@ std::vector<cv::Mat> images(10);
 std::vector<std::vector<cv::KeyPoint>> buffer_keypoints(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
-const BinaryTree256b::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
+const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
 
 int32_t main(int32_t argc, char** argv) {
 
@@ -55,7 +55,7 @@ int32_t main(int32_t argc, char** argv) {
   const std::string test_images_folder = argv[1];
 
   //ds matchables vector
-  std::vector<BinaryTree256b::MatchableVector> matchables_per_image(10);
+  std::vector<BinaryTree256::MatchableVector> matchables_per_image(10);
   for (uint32_t u = 0; u < 10; ++u) {
 
     //ds generate file name
@@ -67,11 +67,11 @@ int32_t main(int32_t argc, char** argv) {
   }
 
   //ds create HBSTs
-  std::vector<BinaryTree256b*> trees(10, 0);
+  std::vector<BinaryTree256*> trees(10, 0);
   for (uint32_t u = 0; u < 10; ++u) {
     std::printf("building tree with image [%02u]\n", u);
     time_begin = std::chrono::system_clock::now();
-    trees[u] = new BinaryTree256b(u, matchables_per_image[u]);
+    trees[u] = new BinaryTree256(u, matchables_per_image[u]);
     duration_construction += std::chrono::system_clock::now()-time_begin;
   }
 
@@ -82,9 +82,9 @@ int32_t main(int32_t argc, char** argv) {
     for (uint32_t index_reference = 0; index_reference < 10; ++index_reference) {
 
       //ds query reference with matchables
-      BinaryTree256b::MatchVector matches;
+      BinaryTree256::MatchVector matches;
       time_begin = std::chrono::system_clock::now();
-      trees[index_reference]->match(matchables_per_image[index_query], matches);
+      trees[index_reference]->matchLazy(matchables_per_image[index_query], matches);
       duration_query += std::chrono::system_clock::now()-time_begin;
 
       std::printf("matches for QUERY [%02u] to REFERENCE [%02u]: %4lu (matching ratio: %5.3f)\n", index_query, index_reference, matches.size(),
@@ -100,7 +100,7 @@ int32_t main(int32_t argc, char** argv) {
       cv::Point2f shift(0, images[index_reference].rows);
 
       //ds draw correspondences
-      for (const BinaryTree256b::Match& match: matches) {
+      for (const BinaryTree256::Match& match: matches) {
 
         //ds draw correspondence
         cv::line(image_display, buffer_keypoints[index_reference][match.identifier_reference].pt, buffer_keypoints[index_query][match.identifier_query].pt+shift, cv::Scalar(0, 255, 0));
@@ -130,7 +130,7 @@ int32_t main(int32_t argc, char** argv) {
 #endif
 
   //ds fight memory leaks!
-  for (const BinaryTree256b* tree: trees) {
+  for (const BinaryTree256* tree: trees) {
     delete tree;
   }
   matchables_per_image.clear();
@@ -139,10 +139,10 @@ int32_t main(int32_t argc, char** argv) {
   return 0;
 }
 
-const BinaryTree256b::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
+const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
 
   //ds allocate empty matchable vector
-  BinaryTree256b::MatchableVector matchables(0);
+  BinaryTree256::MatchableVector matchables(0);
 
   //ds load image (project root folder)
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
@@ -156,5 +156,5 @@ const BinaryTree256b::MatchableVector getMatchables(const std::string& filename_
   std::cerr << "loaded image: " << filename_image_ << " with keypoints/descriptors: " << descriptors.rows << std::endl;
 
   //ds get descriptors to HBST format
-  return BinaryTree256b::getMatchablesWithIndex(descriptors);
+  return BinaryTree256::getMatchablesWithIndex(descriptors);
 }

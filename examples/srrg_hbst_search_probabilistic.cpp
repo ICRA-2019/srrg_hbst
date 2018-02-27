@@ -7,7 +7,7 @@
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::ProbabilisticMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::ProbabilisticNode<Matchable> Node;
-typedef srrg_hbst::ProbabilisticTree<Node> Tree;
+typedef srrg_hbst::ProbabilisticTree<Node, MAXIMUM_DISTANCE_HAMMING> Tree;
 const double RAND_MAX_AS_DOUBLE = static_cast<double>(RAND_MAX);
 
 //ds dummy descriptor generation
@@ -55,20 +55,29 @@ int32_t main(int32_t argc, char** argv) {
   //ds query descriptor pool
   const std::shared_ptr<const Tree::MatchableVector> matchables_query = getDummyMatchables(5000);
 
-//  //ds get matches (opencv IN/OUT style)
-//  Tree::MatchVector matches1;
+
+
+  //ds get matches (opencv IN/OUT style)
+  Tree::MatchVector matches1;
 //  hbst_tree.match(*matchables_query, matches1);
 //
 //  //ds get matches directly
 //  const std::shared_ptr<const Tree::MatchVector> matches2 = hbst_tree.getMatches(matchables_query);
-
-  //ds match count functions (FAST)
-  const uint64_t number_of_matches      = hbst_tree.getNumberOfMatches(matchables_query);
-  const double matching_ratio           = hbst_tree.getMatchingRatio(matchables_query);
-
-  std::cerr << "matches for distance of 25: " << number_of_matches << std::endl;
-  std::cerr << "                     ratio: " << matching_ratio << std::endl;
-
+//
+//  //ds match count functions (FAST)
+//  const uint64_t number_of_matches      = hbst_tree.getNumberOfMatches(matchables_query);
+//  const double matching_ratio           = hbst_tree.getMatchingRatio(matchables_query);
+//  const uint64_t number_of_matches_lazy = hbst_tree.getNumberOfMatchesLazyEvaluation(matchables_query);
+//  const double matching_ratio_lazy      = hbst_tree.getMatchingRatioLazyEvaluation(matchables_query);
+//
+//  std::cerr << "matches for distance of 25: " << number_of_matches << std::endl;
+//  std::cerr << "                     ratio: " << matching_ratio << std::endl;
+//  std::cerr << "lazy matches for distance of 25: " << number_of_matches_lazy << std::endl;
+//  std::cerr << "                          ratio: " << matching_ratio_lazy << std::endl;
+//
+//
+//
+//
 //  //ds matches must be identical: check if number of elements differ
 //  if(matches1.size() != matches2->size()) {
 //    std::cerr << "received inconsistent matching returns" << std::endl;
@@ -81,6 +90,7 @@ int32_t main(int32_t argc, char** argv) {
 //    //ds check if not matching
 //    if(matches1[index_match].identifier_query     != matches2->at(index_match).identifier_query    ||
 //       matches1[index_match].identifier_reference != matches2->at(index_match).identifier_reference||
+//       matches1[index_match].identifier_tree      != matches2->at(index_match).identifier_tree     ||
 //       matches1[index_match].distance             != matches2->at(index_match).distance            ) {
 //        std::cerr << "received inconsistent matching returns" << std::endl;
 //        return -1;
@@ -93,6 +103,6 @@ int32_t main(int32_t argc, char** argv) {
   }
 
   //ds done
-//  std::cout << "successfully matched descriptors: " << matches1.size( ) << std::endl;
+  std::cout << "successfully matched descriptors: " << matches1.size( ) << std::endl;
   return 0;
 }

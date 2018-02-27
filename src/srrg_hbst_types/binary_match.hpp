@@ -44,10 +44,10 @@ struct BinaryMatch {
   //! @brief attributes
   const MatchableType_* matchable_query;
   const MatchableType_* matchable_reference;
-  const uint64_t identifier_query;
-  const uint64_t identifier_reference;
+  uint64_t identifier_query;
+  uint64_t identifier_reference;
   const void* pointer_query;
   const void* pointer_reference;
-  const real_type_ distance;
+  real_type_ distance;
 };
 }

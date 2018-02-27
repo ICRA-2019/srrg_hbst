@@ -1,18 +1,27 @@
+#ds build standalone examples
 add_executable(srrg_hbst_search_plain srrg_hbst_search_plain.cpp)
-
-#ds if we found an eigen installation
-if(SRRG_HBST_HAS_EIGEN)
-  add_executable(srrg_hbst_search_probabilistic srrg_hbst_search_probabilistic.cpp)
-endif()
+add_executable(srrg_hbst_search_bonsai srrg_hbst_search_bonsai.cpp)
 
 #ds if we found an opencv installation
 if(SRRG_HBST_HAS_OPENCV)
   target_link_libraries(srrg_hbst_search_plain ${OpenCV_LIBS})
-  if(SRRG_HBST_HAS_EIGEN)
-    target_link_libraries(srrg_hbst_search_probabilistic ${OpenCV_LIBS})
-  endif()
+  target_link_libraries(srrg_hbst_search_bonsai ${OpenCV_LIBS})
   add_executable(srrg_hbst_search_opencv_indices srrg_hbst_search_opencv_indices.cpp)
   target_link_libraries(srrg_hbst_search_opencv_indices ${OpenCV_LIBS})
   add_executable(srrg_hbst_search_opencv_pointers srrg_hbst_search_opencv_pointers.cpp)
   target_link_libraries(srrg_hbst_search_opencv_pointers ${OpenCV_LIBS})
+  add_executable(srrg_hbst_search_opencv_pointers_bonsai srrg_hbst_search_opencv_pointers_bonsai.cpp)
+  target_link_libraries(srrg_hbst_search_opencv_pointers_bonsai ${OpenCV_LIBS})
 endif()
+
+
+#ds if we found an eigen installation
+if(SRRG_HBST_HAS_EIGEN)
+  add_executable(srrg_hbst_search_probabilistic srrg_hbst_search_probabilistic.cpp)
+  
+  #ds and an opencv installation
+  if(SRRG_HBST_HAS_OPENCV)
+    target_link_libraries(srrg_hbst_search_probabilistic ${OpenCV_LIBS})
+  endif()
+endif()
+
