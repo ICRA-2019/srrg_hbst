@@ -14,7 +14,6 @@ if(SRRG_HBST_HAS_OPENCV)
   target_link_libraries(match_incremental_opencv_pointers ${OpenCV_LIBS})
 endif()
 
-
 #ds if we found an eigen installation
 if(SRRG_HBST_HAS_EIGEN)
   add_executable(match_probabilistic match_probabilistic.cpp)

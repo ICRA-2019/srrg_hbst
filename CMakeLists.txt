@@ -15,7 +15,7 @@ add_definitions(-Ofast -march=native -Wall -pedantic -std=c++11)
 
 #ds locate external packages: Eigen (currently not required)
 find_package(Eigen3 QUIET)
-if(Eigen3_FOUND)
+if(Eigen3_FOUND OR EIGEN3_INCLUDE_DIR)
   message("srrg_hbst|found Eigen version: '3' (${EIGEN3_INCLUDE_DIR}) - building Eigen example code")
 
   #ds enable OpenCV usage for the complete project (wrappers, example code)
