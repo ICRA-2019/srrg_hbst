@@ -11,8 +11,8 @@ Dependencies:
 - GCC 5 or higher
 
 Optionals:
-- Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project)
-- OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project) <br/>
+- Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project).
+- OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project). <br/>
 
 ## Example code (catkin ready!)
 CMake build sequence for example code (in project root):
@@ -26,14 +26,15 @@ A simple example program can be called with (while still in the build folder):
 
     examples/srrg_hbst_search_opencv_indices ../examples/test_images
 
-Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables <br/>
-The example sequence of 10 images is part of the repository and can be found under `examples/test_images`
+Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables. <br>
+The example sequence of 10 images is part of the repository and can be found under `examples/test_images`. <br>
+The example images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
 
 
 ## Build your own Descriptor/Node types!
-The 2 base classes: `BinaryNode` and `BinaryMatchable` (see `src/srrg_hbst_types`) can easily be inherited <br/>
-Users might specify their own, augmented binary descriptor and node classes with specific leaf spawning <br>
-Two variants of subclassing are already provided in `src/srrg_hbst_types_probabilistic`
+The 2 base classes: `BinaryNode` and `BinaryMatchable` (see `src/srrg_hbst_types`) can easily be inherited. <br>
+Users might specify their own, augmented binary descriptor and node classes with specific leaf spawning. <br>
+Two variants of subclassing are already provided in `src/srrg_hbst_types_probabilistic`.
 
 ## It doesn't work?
 [Open an issue](https://gitlab.com/srrg-software/srrg_hbst/issues) or contact the maintainer (see package.xml)
