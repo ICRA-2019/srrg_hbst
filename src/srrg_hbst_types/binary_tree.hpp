@@ -4,9 +4,6 @@
 
 namespace srrg_hbst {
 
-//ds DEVELOPMENT ONLY TODO purge
-class ViewerBonsai;
-
 //! @class the binary tree class, consisting of binary nodes holding binary descriptors
 template<typename BinaryNodeType_>
 class BinaryTree
@@ -119,13 +116,6 @@ public:
   //! @brief const accessor to root node
   const Node* root() const {return _root;}
 
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-
-  //! @brief 1-number of new leaves/number of train descriptors
-  double current_aggregation_ratio = 0;
-
-#endif
-
 //ds attributes
 protected:
 
@@ -142,23 +132,31 @@ protected:
   //! @brief bookkeeping: trainable matchables resulting from last matchAndAdd call
   std::vector<Trainable> _trainables;
 
-//ds access (shared pointer wrappings)
+//ds access wrappers
 public:
 
-  const uint64_t getNumberOfMatches(const std::shared_ptr<const MatchableVector> matchables_query_) const {
-    return getNumberOfMatches(*matchables_query_);
+  const uint64_t getNumberOfMatches(const std::shared_ptr<const MatchableVector> matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return getNumberOfMatches(*matchables_query_, maximum_distance_);
   }
 
-  const typename Node::real_type getMatchingRatio(const std::shared_ptr<const MatchableVector> matchables_query_) const {
-    return static_cast<typename Node::real_type>(getNumberOfMatches(*matchables_query_))/matchables_query_->size();
+  const typename Node::real_type getMatchingRatio(const std::shared_ptr<const MatchableVector> matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return getMatchingRatio(*matchables_query_, maximum_distance_);
   }
 
-  const uint64_t getNumberOfMatchesLazy(const std::shared_ptr<const MatchableVector> matchables_query_) const {
-    return getNumberOfMatchesLazy(*matchables_query_);
+  const uint64_t getNumberOfMatchesLazy(const std::shared_ptr<const MatchableVector> matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return getNumberOfMatchesLazy(*matchables_query_, maximum_distance_);
   }
 
-  const typename Node::real_type getMatchingRatioLazy(const std::shared_ptr<const MatchableVector> matchables_query_) const {
-    return static_cast<typename Node::real_type>(getNumberOfMatchesLazy(*matchables_query_))/matchables_query_->size();
+  const typename Node::real_type getMatchingRatioLazy(const std::shared_ptr<const MatchableVector> matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return getMatchingRatioLazy(*matchables_query_, maximum_distance_);
+  }
+
+  const typename Node::real_type getMatchingRatioLazy(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return static_cast<typename Node::real_type>(getNumberOfMatchesLazy(matchables_query_, maximum_distance_))/matchables_query_.size();
+  }
+
+  const typename Node::real_type getMatchingRatio(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    return static_cast<typename Node::real_type>(getNumberOfMatches(matchables_query_, maximum_distance_))/matchables_query_.size();
   }
 
 //ds access
@@ -181,18 +179,11 @@ public:
       return;
     }
 
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-    uint64_t number_of_new_leafs = 0;
-#endif
-
     //ds check if we have to build an initial tree first (no training afterwards)
     if (!_root) {
        _root = new Node(_matchables_to_train, train_mode_);
       _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
       _matchables_to_train.clear();
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-      current_aggregation_ratio = 1;
-#endif
       return;
     }
 
@@ -228,15 +219,8 @@ public:
     //ds spawn leaves if requested
     for (Node* node: nodes_to_update) {
       if (node->spawnLeafs(train_mode_)) {
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-        ++number_of_new_leafs;
-#endif
       }
     }
-
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-    current_aggregation_ratio = 1-static_cast<double>(number_of_new_leafs)/_matchables_to_train.size();
-#endif
     _matchables.insert(_matchables.end(), _matchables_to_train.begin(), _matchables_to_train.end());
     _matchables_to_train.clear();
   }
@@ -256,9 +240,9 @@ public:
 
           //ds check the split bit and go deeper
           if(matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<const Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<const Node*>(node_current->left);
           }
         } else {
 
@@ -276,10 +260,6 @@ public:
     return number_of_matches;
   }
 
-  const typename Node::real_type getMatchingRatio(const MatchableVector& matchables_query_) const {
-    return static_cast<typename Node::real_type>(getNumberOfMatches(matchables_query_))/matchables_query_.size();
-  }
-
   const uint64_t getNumberOfMatchesLazy(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
     uint64_t number_of_matches = 0;
 
@@ -295,9 +275,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<const Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<const Node*>(node_current->left);
           }
         }
         else
@@ -311,10 +291,6 @@ public:
       }
     }
     return number_of_matches;
-  }
-
-  const typename Node::real_type getMatchingRatioLazy(const MatchableVector& matchables_query_) const {
-    return static_cast<typename Node::real_type>(getNumberOfMatchesLazyEvaluation(matchables_query_))/matchables_query_.size();
   }
 
   //ds direct matching function on this tree
@@ -483,9 +459,6 @@ public:
       _root = new Node(matchables_);
       _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
       _added_identifiers_train.insert(matchables_.front()->identifier_tree);
-#ifdef ENABLE_SRRG_HBST_ANALYTICS
-      current_aggregation_ratio = 1;
-#endif
       return;
     }
 
@@ -774,9 +747,6 @@ protected:
       }
     }
   }
-
-  //ds DEVELOPMENT ONLY TODO purge
-  friend ViewerBonsai;
 };
 
 typedef BinaryTree<BinaryNode512> BinaryTree512;

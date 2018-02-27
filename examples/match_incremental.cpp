@@ -8,29 +8,7 @@ typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds dummy descriptor generation
-Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_, const uint64_t& identifier_tree_) {
-
-  //ds preallocate vector
-  Tree::MatchableVector matchables(number_of_matchables_);
-
-  //ds set values
-  for(uint64_t identifier = 0; identifier < number_of_matchables_; ++identifier) {
-
-    //ds generate a "random" descriptor by flipping some bits
-    Matchable::Descriptor descriptor;
-    for (uint32_t u = 0; u < DESCRIPTOR_SIZE_BITS/3; ++u) {
-      if (rand()%2) {
-        descriptor.flip(u);
-      }
-    }
-
-    //ds set matchable
-    matchables[identifier] = new Matchable(identifier, descriptor, identifier_tree_);
-  }
-
-  //ds done
-  return matchables;
-}
+Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_, const uint64_t& identifier_tree_);
 
 int32_t main() {
 
@@ -67,4 +45,28 @@ int32_t main() {
     delete matchable;
   }
   return 0;
+}
+
+Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_, const uint64_t& identifier_tree_) {
+
+  //ds preallocate vector
+  Tree::MatchableVector matchables(number_of_matchables_);
+
+  //ds set values
+  for(uint64_t identifier = 0; identifier < number_of_matchables_; ++identifier) {
+
+    //ds generate a "random" descriptor by flipping some bits
+    Matchable::Descriptor descriptor;
+    for (uint32_t u = 0; u < DESCRIPTOR_SIZE_BITS/3; ++u) {
+      if (rand()%2) {
+        descriptor.flip(u);
+      }
+    }
+
+    //ds set matchable
+    matchables[identifier] = new Matchable(identifier, descriptor, identifier_tree_);
+  }
+
+  //ds done
+  return matchables;
 }

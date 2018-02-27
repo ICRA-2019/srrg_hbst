@@ -11,6 +11,41 @@ typedef srrg_hbst::BinaryTree<Node> Tree;
 const double RAND_MAX_AS_DOUBLE = static_cast<double>(RAND_MAX);
 
 //ds dummy descriptor generation
+Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_);
+
+int32_t main() {
+
+  //ds train descriptor pool
+  const Tree::MatchableVector matchables_reference = getDummyMatchables(10000);
+
+  //ds allocate a BTree object on these descriptors (no shared pointer passed as the tree will have its own constant copy of the train descriptors)
+  const Tree tree(0, matchables_reference);
+
+  //ds query descriptor pool
+  const Tree::MatchableVector matchables_query = getDummyMatchables(5000);
+
+  //ds matching results
+  Tree::MatchVector matches;
+
+  //ds query tree for matches (exhaustive search in leafs) with maximum distance 25
+  tree.match(matchables_query, matches, 25);
+  std::cerr << "successfully matched descriptors: " << matches.size() << std::endl;
+
+  //ds query tree for matching ratio
+  const double matching_ratio = tree.getMatchingRatio(matchables_query, 25);
+  std::cerr << "matching ratio: " << matching_ratio << std::endl;
+
+  //ds get lazy matching ratio
+  const double matching_ratio_lazy = tree.getMatchingRatioLazy(matchables_query, 25);
+  std::cerr << "matching ratio lazy: " << matching_ratio_lazy << std::endl;
+
+  //ds fight memory leaks!
+  for(const Matchable* matchable: matchables_query) {
+    delete matchable;
+  }
+  return 0;
+}
+
 Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_) {
 
   //ds preallocate vector
@@ -42,69 +77,4 @@ Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_) 
 
   //ds done
   return matchables;
-}
-
-int32_t main() {
-
-  //ds train descriptor pool
-  const Tree::MatchableVector matchables_reference = getDummyMatchables(10000);
-
-  //ds allocate a BTree object on these descriptors (no shared pointer passed as the tree will have its own constant copy of the train descriptors)
-  const Tree tree(0, matchables_reference);
-
-  //ds query descriptor pool
-  const Tree::MatchableVector matchables_query = getDummyMatchables(5000);
-
-  //ds matching results
-  Tree::MatchVector matches;
-
-  //ds query tree for matches (exhaustive search in leafs) with maximum distance 25
-  tree.match(matchables_query, matches, 25);
-
-//  hbst_tree.match(*matchables_query, matches1);
-//
-//  //ds get matches directly
-//  const std::shared_ptr<const Tree::MatchVector> matches2 = hbst_tree.getMatches(matchables_query);
-//
-//  //ds match count functions (FAST)
-//  const uint64_t number_of_matches      = hbst_tree.getNumberOfMatches(matchables_query);
-//  const double matching_ratio           = hbst_tree.getMatchingRatio(matchables_query);
-//  const uint64_t number_of_matches_lazy = hbst_tree.getNumberOfMatchesLazyEvaluation(matchables_query);
-//  const double matching_ratio_lazy      = hbst_tree.getMatchingRatioLazyEvaluation(matchables_query);
-//
-//  std::cerr << "matches for distance of 25: " << number_of_matches << std::endl;
-//  std::cerr << "                     ratio: " << matching_ratio << std::endl;
-//  std::cerr << "lazy matches for distance of 25: " << number_of_matches_lazy << std::endl;
-//  std::cerr << "                          ratio: " << matching_ratio_lazy << std::endl;
-//
-//
-//
-//
-//  //ds matches must be identical: check if number of elements differ
-//  if(matches1.size() != matches2->size()) {
-//    std::cerr << "received inconsistent matching returns" << std::endl;
-//    return -1;
-//  }
-//
-//  //ds check each element
-//  for (uint64_t index_match = 0; index_match < matches1.size( ); ++index_match) {
-//
-//    //ds check if not matching
-//    if(matches1[index_match].identifier_query     != matches2->at(index_match).identifier_query    ||
-//       matches1[index_match].identifier_reference != matches2->at(index_match).identifier_reference||
-//       matches1[index_match].identifier_tree      != matches2->at(index_match).identifier_tree     ||
-//       matches1[index_match].distance             != matches2->at(index_match).distance            ) {
-//        std::cerr << "received inconsistent matching returns" << std::endl;
-//        return -1;
-//    }
-//  }
-
-  //ds fight memory leaks!
-  for(const Matchable* matchable: matchables_query) {
-    delete matchable;
-  }
-
-  //ds done
-  std::cout << "successfully matched descriptors: " << matches.size() << std::endl;
-  return 0;
 }
