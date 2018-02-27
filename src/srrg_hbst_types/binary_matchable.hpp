@@ -44,9 +44,9 @@ public:
   BinaryMatchable(const uint64_t& identifier_,
                   const Descriptor& descriptor_,
                   const uint64_t& identifier_tree_ = 0): identifier(identifier_),
-                                                                       pointer(0),
-                                                                       descriptor(descriptor_),
-                                                                       identifier_tree(identifier_tree_) {}
+                                                         pointer(0),
+                                                         descriptor(descriptor_),
+                                                         identifier_tree(identifier_tree_) {}
 
   //! @brief constructor with an object pointer for association
   //! @param[in] pointer_ associated object

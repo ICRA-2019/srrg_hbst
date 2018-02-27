@@ -211,9 +211,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_to_insert->descriptor[node->index_split_bit]) {
-            node = node->right;
+            node = static_cast<Node*>(node->right);
           } else {
-            node = node->left;
+            node = static_cast<Node*>(node->left);
           }
         } else {
 
@@ -332,9 +332,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<const Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<const Node*>(node_current->left);
           }
         } else {
 
@@ -368,9 +368,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<const Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<const Node*>(node_current->left);
           }
         } else {
 
@@ -435,9 +435,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<const Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<const Node*>(node_current->left);
           }
         } else {
 
@@ -515,9 +515,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = node_current->right;
+            node_current = static_cast<Node*>(node_current->right);
           } else {
-            node_current = node_current->left;
+            node_current = static_cast<Node*>(node_current->left);
           }
         } else {
 
@@ -731,8 +731,8 @@ protected:
     if(node_->has_leafs) {
 
       //ds add leafs and so on
-      _setNodesRecursive(node_->left, nodes_collection_);
-      _setNodesRecursive(node_->right, nodes_collection_);
+      _setNodesRecursive(static_cast<const Node*>(node_->left), nodes_collection_);
+      _setNodesRecursive(static_cast<const Node*>(node_->right), nodes_collection_);
     }
   }
 

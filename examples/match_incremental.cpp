@@ -18,7 +18,7 @@ Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_, 
 
     //ds generate a "random" descriptor by flipping some bits
     Matchable::Descriptor descriptor;
-    for (uint32_t u = 0; u < DESCRIPTOR_SIZE_BITS; ++u) {
+    for (uint32_t u = 0; u < DESCRIPTOR_SIZE_BITS/3; ++u) {
       if (rand()%2) {
         descriptor.flip(u);
       }

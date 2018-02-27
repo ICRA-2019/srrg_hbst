@@ -16,9 +16,9 @@ const std::shared_ptr<const Tree::MatchableVector> getDummyMatchables(const uint
   //ds set values
   for(uint64_t identifier = 0; identifier < number_of_matchables_; ++identifier) {
 
-    //ds generate a "random" descriptor by flipping the first bits
+    //ds generate a "random" descriptor by flipping some bits
     Matchable::Descriptor descriptor;
-    for (uint32_t u = 0; u < 50; ++u) {
+    for (uint32_t u = 0; u < DESCRIPTOR_SIZE_BITS/3; ++u) {
       if (rand() % 2) {
         descriptor.flip(u);
       }
