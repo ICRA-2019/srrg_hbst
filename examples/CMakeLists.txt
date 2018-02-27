@@ -1,27 +1,26 @@
 #ds build standalone examples
-add_executable(srrg_hbst_search_plain srrg_hbst_search_plain.cpp)
-add_executable(srrg_hbst_search_bonsai srrg_hbst_search_bonsai.cpp)
+add_executable(match match.cpp)
+add_executable(match_incremental match_incremental.cpp)
 
 #ds if we found an opencv installation
 if(SRRG_HBST_HAS_OPENCV)
-  target_link_libraries(srrg_hbst_search_plain ${OpenCV_LIBS})
-  target_link_libraries(srrg_hbst_search_bonsai ${OpenCV_LIBS})
-  add_executable(srrg_hbst_search_opencv_indices srrg_hbst_search_opencv_indices.cpp)
-  target_link_libraries(srrg_hbst_search_opencv_indices ${OpenCV_LIBS})
-  add_executable(srrg_hbst_search_opencv_pointers srrg_hbst_search_opencv_pointers.cpp)
-  target_link_libraries(srrg_hbst_search_opencv_pointers ${OpenCV_LIBS})
-  add_executable(srrg_hbst_search_opencv_pointers_bonsai srrg_hbst_search_opencv_pointers_bonsai.cpp)
-  target_link_libraries(srrg_hbst_search_opencv_pointers_bonsai ${OpenCV_LIBS})
+  target_link_libraries(match ${OpenCV_LIBS})
+  target_link_libraries(match_incremental ${OpenCV_LIBS})
+  add_executable(match_opencv_indices match_opencv_indices.cpp)
+  target_link_libraries(match_opencv_indices ${OpenCV_LIBS})
+  add_executable(match_opencv_pointers match_opencv_pointers.cpp)
+  target_link_libraries(match_opencv_pointers ${OpenCV_LIBS})
+  add_executable(match_incremental_opencv_pointers match_incremental_opencv_pointers.cpp)
+  target_link_libraries(match_incremental_opencv_pointers ${OpenCV_LIBS})
 endif()
 
 
 #ds if we found an eigen installation
 if(SRRG_HBST_HAS_EIGEN)
-  add_executable(srrg_hbst_search_probabilistic srrg_hbst_search_probabilistic.cpp)
+  add_executable(match_probabilistic match_probabilistic.cpp)
   
   #ds and an opencv installation
   if(SRRG_HBST_HAS_OPENCV)
-    target_link_libraries(srrg_hbst_search_probabilistic ${OpenCV_LIBS})
+    target_link_libraries(match_probabilistic ${OpenCV_LIBS})
   endif()
 endif()
-

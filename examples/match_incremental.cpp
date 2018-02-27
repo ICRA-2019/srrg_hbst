@@ -1,5 +1,4 @@
 #include <iostream>
-
 #include "srrg_hbst_types/binary_tree.hpp"
 
 //ds current setup

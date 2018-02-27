@@ -2,33 +2,43 @@
 Contributors: Dominik Schlegel, Giorgio Grisetti
 ## [* check out the wiki for figures and videos! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 Supported platforms:
-- UNIX x86/x64
-- Windows x86/x64 (untested) <br/>
+- UNIX x86/x64 (tested: Ubuntu 14.04 x64, Ubuntu 16.04 x64)
+- Windows x86/x64 (untested)
 
-Dependencies:
+Minimum requirements:
 - CMake 2.8.3+ (https://cmake.org/)
-- C++ 11 STL libraries <br/>
+- C++ 11 STL libraries
 - GCC 5 or higher
 
 Optionals:
 - Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project).
-- OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project). <br/>
+- OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
+- Catkin Command Line Tools (https://catkin-tools.readthedocs.io/en/latest/) for easy integration
 
 ## Example code (catkin ready!)
-CMake build sequence for example code (in project root):
+Out of source CMake build sequence for example code (in project root):
 
     mkdir build
     cd build
     cmake ..
     make
 
-A simple example program can be called with (while still in the build folder):
+A simple example program with visuals can be called with (from the project root, when OpenCV is installed):
 
-    examples/srrg_hbst_search_opencv_indices ../examples/test_images
+    build/examples/match_opencv_indices examples/test_images
 
 Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables. <br>
 The example sequence of 10 images is part of the repository and can be found under `examples/test_images`. <br>
 The example images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
+
+---
+Alternative catkin build:
+
+    catkin build srrg_hbst
+    
+An example using the incremental HBST can be run from the project root with:
+
+    rosrun srrg_hbst match_incremental_opencv_pointers examples/test_images
 
 
 ## Build your own Descriptor/Node types!
