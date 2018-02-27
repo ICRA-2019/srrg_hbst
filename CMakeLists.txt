@@ -42,4 +42,3 @@ catkin_package(INCLUDE_DIRS src)
 #ds configure build for examples
 include_directories(${catkin_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/src)
 add_subdirectory(examples)
-

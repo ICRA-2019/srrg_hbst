@@ -1,28 +1,23 @@
 #include <iostream>
 #include <chrono>
 #include <ctime>
-
-//ds resolve opencv includes
-#include <opencv2/core/version.hpp>
-#include <opencv2/opencv.hpp>
+#include "srrg_hbst_types/binary_tree.hpp"
 
 #if CV_MAJOR_VERSION == 2
-  //ds no specifics
 #elif CV_MAJOR_VERSION == 3
   #include <opencv2/xfeatures2d.hpp>
 #else
   #error OpenCV version not supported
 #endif
 
-#include "srrg_hbst_types/binary_tree.hpp"
 using namespace srrg_hbst;
 
 //ds feature handling
 #if CV_MAJOR_VERSION == 2
-cv::FeatureDetector* feature_detector                 = new cv::FastFeatureDetector();
+cv::FeatureDetector* keypoint_detector                 = new cv::FastFeatureDetector();
 const cv::DescriptorExtractor* descriptor_extractor   = new cv::BriefDescriptorExtractor(32);
 #elif CV_MAJOR_VERSION == 3
-cv::Ptr<cv::FastFeatureDetector> feature_detector     = cv::FastFeatureDetector::create();
+cv::Ptr<cv::FastFeatureDetector> keypoint_detector     = cv::FastFeatureDetector::create();
 cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
 #else
 #error OpenCV version not supported
@@ -125,7 +120,7 @@ int32_t main(int32_t argc, char** argv) {
   std::cerr << "------------------------------------------------" << std::endl;
 
 #if CV_MAJOR_VERSION == 2
-  delete feature_detector;
+  delete keypoint_detector;
   delete descriptor_extractor;
 #endif
 
@@ -148,7 +143,7 @@ const BinaryTree256::MatchableVector getMatchables(const std::string& filename_i
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
 
   //ds detect FAST keypoints
-  feature_detector->detect(images[identifier_tree_], buffer_keypoints[identifier_tree_]);
+  keypoint_detector->detect(images[identifier_tree_], buffer_keypoints[identifier_tree_]);
 
   //ds compute BRIEF descriptors
   cv::Mat descriptors;
