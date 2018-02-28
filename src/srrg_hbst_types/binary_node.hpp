@@ -287,7 +287,7 @@ protected:
 template<typename BinaryMatchableType_, typename real_type_>
 uint64_t BinaryNode<BinaryMatchableType_, real_type_>::maximum_leaf_size      = 100;
 template<typename BinaryMatchableType_, typename real_type_>
-real_type_ BinaryNode<BinaryMatchableType_, real_type_>::maximum_partitioning = 0.25;
+real_type_ BinaryNode<BinaryMatchableType_, real_type_>::maximum_partitioning = 0.1;
 template<typename BinaryMatchableType_, typename real_type_>
 uint32_t BinaryNode<BinaryMatchableType_, real_type_>::maximum_depth          = BinaryMatchableType_::descriptor_size_bits;
 template<typename BinaryMatchableType_, typename real_type_>
