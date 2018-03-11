@@ -14,11 +14,9 @@
 cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
 cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
-//ds visualization buffers
+//ds buffers
 std::vector<cv::Mat> images(10);
-
-//ds buffer keypoints globally - otherwise the memory pointers might get broken by the scope
-std::vector<std::vector<cv::KeyPoint>> buffer_keypoints(10);
+std::vector<std::vector<const cv::KeyPoint*>> buffer_keypoints(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
 const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
@@ -106,17 +104,17 @@ int32_t main(int32_t argc_, char** argv_) {
       for (const srrg_hbst::BinaryTree256::Match& match: matches.at(index_reference)) {
 
         //ds directly get the keypoint objects
-        const cv::KeyPoint keypoint_query     = *(reinterpret_cast<const cv::KeyPoint*>(match.pointer_query));
-        const cv::KeyPoint keypoint_reference = *(reinterpret_cast<const cv::KeyPoint*>(match.pointer_reference));
+        const cv::KeyPoint* keypoint_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
+        const cv::KeyPoint* keypoint_reference = static_cast<const cv::KeyPoint*>(match.pointer_reference);
 
         //ds draw correspondence
-        cv::line(image_display, keypoint_query.pt, keypoint_reference.pt+shift, cv::Scalar(0, 255, 0));
+        cv::line(image_display, keypoint_query->pt, keypoint_reference->pt+shift, cv::Scalar(0, 255, 0));
 
         //ds draw reference point in upper image
-        cv::circle(image_display, keypoint_query.pt, 2, cv::Scalar(255, 0, 0));
+        cv::circle(image_display, keypoint_query->pt, 2, cv::Scalar(255, 0, 0));
 
         //ds draw query point in lower image
-        cv::circle(image_display, keypoint_reference.pt+shift, 2, cv::Scalar(0, 0, 255));
+        cv::circle(image_display, keypoint_reference->pt+shift, 2, cv::Scalar(0, 0, 255));
       }
       cv::imshow("matching (top: QUERY, bot: REFERENCE)", image_display);
       cv::waitKey(0);
@@ -129,6 +127,11 @@ int32_t main(int32_t argc_, char** argv_) {
   std::printf("  average query duration (s): %6.4f\n", duration_query.count()/number_of_images);
   std::printf("average query matching ratio: %6.4f\n", matching_ratio/(number_of_images*number_of_images));
   std::cerr << "------------------------------------------------" << std::endl;
+  for (const std::vector<const cv::KeyPoint*>& keypoints: buffer_keypoints) {
+    for (const cv::KeyPoint* keypoint: keypoints) {
+      delete keypoint;
+    }
+  }
   return 0;
 }
 
@@ -141,13 +144,18 @@ const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string&
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
 
   //ds detect FAST keypoints
-  keypoint_detector->detect(images[identifier_tree_], buffer_keypoints[identifier_tree_]);
+  std::vector<cv::KeyPoint> keypoints;
+  keypoint_detector->detect(images[identifier_tree_], keypoints);
 
   //ds compute BRIEF descriptors
   cv::Mat descriptors;
-  descriptor_extractor->compute(images[identifier_tree_], buffer_keypoints[identifier_tree_], descriptors);
+  descriptor_extractor->compute(images[identifier_tree_], keypoints, descriptors);
   std::cerr << "loaded image: " << filename_image_ << " with keypoints/descriptors: " << descriptors.rows << std::endl;
+  for (const cv::KeyPoint& keypoint: keypoints) {
+    cv::KeyPoint* linked_keypoint = new cv::KeyPoint(keypoint);
+    buffer_keypoints[identifier_tree_].push_back(linked_keypoint);
+  }
 
   //ds get descriptors to HBST format
-  return srrg_hbst::BinaryTree256::getMatchablesWithPointer<cv::KeyPoint>(descriptors, buffer_keypoints[identifier_tree_], identifier_tree_);
+  return srrg_hbst::BinaryTree256::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, buffer_keypoints[identifier_tree_], identifier_tree_);
 }
