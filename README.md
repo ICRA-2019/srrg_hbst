@@ -1,6 +1,6 @@
     HBST: Hamming Binary Search Tree Header-only library
 Contributors: Dominik Schlegel, Giorgio Grisetti
-## [* check out the wiki for figures and videos! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
+## [* check out the wiki for videos and experimental results! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 Supported platforms:
 - UNIX x86/x64 (tested: Ubuntu 14.04 x64, Ubuntu 16.04 x64)
 - Windows x86/x64 (untested)
