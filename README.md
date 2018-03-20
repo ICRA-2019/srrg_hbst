@@ -15,7 +15,7 @@ Optionals:
 - OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
 - Catkin Command Line Tools (https://catkin-tools.readthedocs.io/en/latest/) for easy integration
 
-## Example code (catkin ready!)
+## [Example code](examples) (catkin ready!)
 Out of source CMake build sequence for example code (in project root):
 
     mkdir build
