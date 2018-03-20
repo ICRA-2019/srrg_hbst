@@ -27,7 +27,7 @@ cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::xfeatures2d::BriefDe
 std::vector<cv::Mat> images(10);
 
 //ds buffer keypoints - otherwise the memory pointers get broken by the scope
-std::vector<std::vector<cv::KeyPoint>> buffer_keypoints(10);
+std::vector<std::vector<cv::KeyPoint>> keypoints_per_image(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
 const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
@@ -98,13 +98,13 @@ int32_t main(int32_t argc, char** argv) {
       for (const BinaryTree256::Match& match: matches) {
 
         //ds draw correspondence
-        cv::line(image_display, buffer_keypoints[index_reference][match.identifier_reference].pt, buffer_keypoints[index_query][match.identifier_query].pt+shift, cv::Scalar(0, 255, 0));
+        cv::line(image_display, keypoints_per_image[index_reference][match.identifier_reference].pt, keypoints_per_image[index_query][match.identifier_query].pt+shift, cv::Scalar(0, 255, 0));
 
         //ds draw reference point in upper image
-        cv::circle(image_display, buffer_keypoints[index_reference][match.identifier_reference].pt, 2, cv::Scalar(0, 0, 255));
+        cv::circle(image_display, keypoints_per_image[index_reference][match.identifier_reference].pt, 2, cv::Scalar(0, 0, 255));
 
         //ds draw query point in lower image
-        cv::circle(image_display, buffer_keypoints[index_query][match.identifier_query].pt+shift, 2, cv::Scalar(255, 0, 0));
+        cv::circle(image_display, keypoints_per_image[index_query][match.identifier_query].pt+shift, 2, cv::Scalar(255, 0, 0));
       }
 
       cv::imshow("matching (top: reference, bot: query)", image_display);
@@ -143,11 +143,11 @@ const BinaryTree256::MatchableVector getMatchables(const std::string& filename_i
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
 
   //ds detect FAST keypoints
-  keypoint_detector->detect(images[identifier_tree_], buffer_keypoints[identifier_tree_]);
+  keypoint_detector->detect(images[identifier_tree_], keypoints_per_image[identifier_tree_]);
 
   //ds compute BRIEF descriptors
   cv::Mat descriptors;
-  descriptor_extractor->compute(images[identifier_tree_], buffer_keypoints[identifier_tree_], descriptors);
+  descriptor_extractor->compute(images[identifier_tree_], keypoints_per_image[identifier_tree_], descriptors);
   std::cerr << "loaded image: " << filename_image_ << " with keypoints/descriptors: " << descriptors.rows << std::endl;
 
   //ds get descriptors to HBST format

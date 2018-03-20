@@ -16,7 +16,7 @@ cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
 //ds buffers
 std::vector<cv::Mat> images(10);
-std::vector<std::vector<const cv::KeyPoint*>> buffer_keypoints(10);
+std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
 const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
@@ -127,7 +127,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::printf("  average query duration (s): %6.4f\n", duration_query.count()/number_of_images);
   std::printf("average query matching ratio: %6.4f\n", matching_ratio/(number_of_images*number_of_images));
   std::cerr << "------------------------------------------------" << std::endl;
-  for (const std::vector<const cv::KeyPoint*>& keypoints: buffer_keypoints) {
+  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
     for (const cv::KeyPoint* keypoint: keypoints) {
       delete keypoint;
     }
@@ -153,9 +153,9 @@ const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string&
   std::cerr << "loaded image: " << filename_image_ << " with keypoints/descriptors: " << descriptors.rows << std::endl;
   for (const cv::KeyPoint& keypoint: keypoints) {
     cv::KeyPoint* linked_keypoint = new cv::KeyPoint(keypoint);
-    buffer_keypoints[identifier_tree_].push_back(linked_keypoint);
+    keypoints_per_image[identifier_tree_].push_back(linked_keypoint);
   }
 
   //ds get descriptors to HBST format
-  return srrg_hbst::BinaryTree256::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, buffer_keypoints[identifier_tree_], identifier_tree_);
+  return srrg_hbst::BinaryTree256::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_], identifier_tree_);
 }
