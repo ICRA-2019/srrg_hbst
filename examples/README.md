@@ -9,7 +9,7 @@ Alternatively one can build only *a single tree* that is incrementally grown for
     match_incremental
     
 Note that the above executables required to be run from the `build` folder or alternatively via `rosrun srrg_hbst`. <br>
-Both examples to not require OpenCV or Eigen.
+None of the above examples require OpenCV or Eigen.
 ## OpenCV:
 The HBST library already shipps with OpenCV2/3 wrappers. <br>
 The following 4 examples demonstrate the descriptor matching performance for a set of 10 test images. <br>
