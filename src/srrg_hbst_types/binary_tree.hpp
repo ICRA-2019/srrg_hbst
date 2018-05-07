@@ -555,6 +555,20 @@ public:
     return matchables;
   }
 
+  //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
+  //ds starting the indexing from a given id
+  static const MatchableVector getMatchablesWithIndex(const cv::Mat& descriptors_cv_,
+                                                      const uint64_t& identifier_tree_,
+                                                      const uint64_t& index_start_) {
+    MatchableVector matchables(descriptors_cv_.rows);
+
+    //ds copy raw data
+    for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
+      matchables[index_descriptor] = new Matchable(index_start_+index_descriptor, descriptors_cv_.row(index_descriptor), identifier_tree_);
+    }
+    return matchables;
+  }
+
   //ds creates a matchable vector (pointers) from opencv descriptors - only available if OpenCV is present on building system
   template<typename PointerType_>
   static const MatchableVector getMatchablesWithPointer(const cv::Mat& descriptors_cv_, const std::vector<PointerType_>& pointers_, const uint64_t& identifier_tree_ = 0) {
