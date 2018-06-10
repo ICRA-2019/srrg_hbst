@@ -2,15 +2,18 @@
 Contributors: Dominik Schlegel, Giorgio Grisetti
 ## [* check out the wiki for videos and experimental results! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 Supported platforms:
-- UNIX x86/x64 (tested: Ubuntu 14.04 x64, Ubuntu 16.04 x64)
+- UNIX x86/x64 (tested)
+    - Ubuntu 14.04
+    - Ubuntu 16.04
+    - Ubuntu 18.04
 - Windows x86/x64 (untested)
 
 Minimum requirements:
-- CMake 2.8.3+ (https://cmake.org/)
-- C++ 11 STL libraries
-- GCC 5 or higher
+- [CMake](https://cmake.org) 2.8.3 or higher
+- [C++ 11](http://en.cppreference.com) STL libraries
+- [GCC](https://gcc.gnu.org) 5 or higher
 
-Optionals:
+Optional:
 - Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project).
 - OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
 - Catkin Command Line Tools (https://catkin-tools.readthedocs.io/en/latest/) for easy integration
