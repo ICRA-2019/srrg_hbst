@@ -122,13 +122,14 @@ public:
 
     //ds set original descriptor string after augmentation
     for (uint64_t byte_index = 0; byte_index < raw_descriptor_size_bytes; ++byte_index) {
+      const uint32_t bit_index_start = byte_index*8;
 
-      //ds get minimal datafrom cv::mat
-      const uchar value = descriptor_cv_.at<uchar>(byte_index);
+      //ds grab a byte and convert it to a bitset so we can access the single bits
+      const std::bitset<8>descriptor_byte(descriptor_cv_.at<uchar>(byte_index));
 
-      //ds get bitstring
+      //ds set bitstring
       for (uint8_t v = 0; v < 8; ++v) {
-        binary_descriptor[byte_index*8+v] = (value >> v) & 1;
+        binary_descriptor[bit_index_start+v] = descriptor_byte[v];
       }
     }
     return binary_descriptor;
