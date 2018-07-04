@@ -13,6 +13,9 @@ add_definitions(-Ofast -march=native -Wall -pedantic -std=c++11)
 #ds debug flags
 #add_definitions(-O0 -march=native -Wall -pedantic -std=c++11 -g)
 
+#ds cmake modules
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+
 #ds locate external packages: Eigen (currently not required)
 find_package(Eigen3 QUIET)
 if(Eigen3_FOUND OR EIGEN3_INCLUDE_DIR)

@@ -18,7 +18,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds validate input
   if (argc_ != 2) {
-    std::cerr << "ERROR: invalid call - please use: ./track /path/to/srrg_hbst/examples/test_images" << std::endl;
+    std::cerr << "ERROR: invalid call - please use: ./tracker /path/to/srrg_hbst/examples/test_images" << std::endl;
     return 0;
   }
 

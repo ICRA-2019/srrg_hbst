@@ -504,8 +504,8 @@ public:
           }
 
           //ds bookkeep matchable for addition
-          _trainables[index_trainable].node        = node_current;
-          _trainables[index_trainable].matchable   = matchable_query;
+          _trainables[index_trainable].node      = node_current;
+          _trainables[index_trainable].matchable = matchable_query;
 
           //ds done
           break;

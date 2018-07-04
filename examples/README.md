@@ -39,3 +39,11 @@ Again the file paths need to be adjusted or the executables run with `rosrun srr
 More robust descriptor track based tree construction can be inspected in:
 
     match_probabilistic
+
+## Eigen, OpenCV and QGLViewer:
+We implemented a simple monocular visual odometry system based on HBST data association:
+
+    rosrun srrg_hbst smoother_monocular image_0/000000.png calib.txt
+
+For now, only processing of the raw [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) is supported. <br>
+Note that for building these examples, the [libQGLViewer](http://libqglviewer.com/) library is required.

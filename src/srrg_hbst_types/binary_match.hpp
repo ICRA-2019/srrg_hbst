@@ -9,6 +9,16 @@ namespace srrg_hbst {
 template<typename MatchableType_, typename real_type_ = double>
 struct BinaryMatch {
 
+  //! @brief default constructor for an uninitialized match
+  //! @returns an uninitialized match
+  BinaryMatch(): matchable_query(0),
+                 matchable_reference(0),
+                 identifier_query(0),
+                 identifier_reference(0),
+                 pointer_query(0),
+                 pointer_reference(0),
+                 distance(0) {}
+
   //! @brief constructor
   //! @param[in] query_ query matchable
   //! @param[in] reference_ reference matchable
@@ -39,7 +49,7 @@ struct BinaryMatch {
   ~BinaryMatch() {}
 
   //! @brief prohibit default construction
-  BinaryMatch() = delete;
+  //BinaryMatch() = delete; uncommented 2018-06-21
 
   //! @brief attributes
   const MatchableType_* matchable_query;
