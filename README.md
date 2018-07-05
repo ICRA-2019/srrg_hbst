@@ -1,12 +1,9 @@
     HBST: Hamming Binary Search Tree Header-only library
 Contributors: Dominik Schlegel, Giorgio Grisetti
 ## [* check out the wiki for videos and experimental results! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
+
 Supported platforms:
-- UNIX x86/x64 (tested)
-    - Ubuntu 14.04
-    - Ubuntu 16.04
-    - Ubuntu 18.04
-- Windows x86/x64 (untested)
+- Linux: Ubuntu 14.04, Ubuntu 16.04, Ubuntu 18.04
 
 Minimum requirements:
 - [CMake](https://cmake.org) 2.8.3 or higher
@@ -14,9 +11,10 @@ Minimum requirements:
 - [GCC](https://gcc.gnu.org) 5 or higher
 
 Optional:
-- Eigen3 (http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project).
-- OpenCV2/3 (http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
-- Catkin Command Line Tools (https://catkin-tools.readthedocs.io/en/latest/) for easy integration
+- [Eigen3](http://eigen.tuxfamily.org/) for probabilisticly enhanced search access (add the definition `-DSRRG_HBST_HAS_EIGEN` in your cmake project).
+- [OpenCV2/3](http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
+- [libQGLViewer](http://libqglviewer.com/) for visual odometry examples ([viewers](examples))
+- [catkin Command Line Tools](https://catkin-tools.readthedocs.io/en/latest/) for easy CMake project integration
 
 ## [Example code](examples) (catkin ready!)
 Out of source CMake build sequence for example code (in project root):
