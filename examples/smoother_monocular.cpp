@@ -17,21 +17,25 @@
 #define qglv_real float
 #endif
 
-//ds current configuration - 256 bit
+//ds current HBST configuration - 256 bit
 typedef srrg_hbst::BinaryTree256 Tree;
 typedef srrg_hbst::BinaryTree256::MatchableVector MatchableVector;
 typedef srrg_hbst::BinaryTree256::Match Match;
 typedef srrg_hbst::BinaryTree256::MatchVector MatchVector;
 typedef srrg_hbst::BinaryTree256::MatchVectorMap MatchVectorMap;
+
+//ds aligned eigen types
 typedef std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > IsometryVector;
 
-//ds 'map' object
+
+
+//ds our 'map' object
 struct Framepoint {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Framepoint(const cv::KeyPoint& keypoint_,
              const cv::Mat& descriptor_): keypoint(keypoint_),
                                           descriptor(descriptor_) {}
-  Framepoint() {}
+  Framepoint() = delete;
 
   //ds measured
   cv::KeyPoint keypoint;
@@ -67,11 +71,16 @@ private:
   StandardCamera* _camera = 0;
 };
 
-//ds geometry operations
+
+
+//ds helpers
+Eigen::Matrix3d getCameraCalibrationMatrixKITTI(const std::string& file_name_calibration_);
 Eigen::Isometry3d v2t(const Eigen::Matrix<double, 6, 1>& t);
 Eigen::Matrix3d skew(const Eigen::Vector3d& p);
-Eigen::Isometry3d getMotionFromEssentialMatrix(const std::vector<cv::Point2d>& image_points_previous_,
-                                               const std::vector<cv::Point2d>& image_points_current_,
+void estimatePointsInCamerasFromMotion(std::vector<Framepoint*>& current_points_,
+                                       const Eigen::Isometry3d& motion_previous_to_current_,
+                                       const Eigen::Matrix3d& camera_calibration_matrix_);
+Eigen::Isometry3d getMotionFromEssentialMatrix(const std::vector<Framepoint*>& current_points_,
                                                const Eigen::Matrix3d& camera_calibration_matrix_);
 std::pair<Eigen::Vector3d, Eigen::Vector3d> getPointsInCameras(const cv::Point2d image_point_previous_,
                                                                const cv::Point2d image_point_current_,
@@ -94,7 +103,10 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << "initial image: " << file_name_initial_image << std::endl;
   std::cerr << "calibration: " << file_name_calibration << std::endl;
 
-  //ds parse extension
+  //ds load camera matrix
+  const Eigen::Matrix3d camera_calibration_matrix(getCameraCalibrationMatrixKITTI(file_name_calibration));
+
+  //ds parse image extension
   const std::size_t index_delimiter_extension = file_name_initial_image.find_last_of('.');
   const std::string extension                 = file_name_initial_image.substr(index_delimiter_extension, file_name_initial_image.length()-index_delimiter_extension);
   std::cerr << "using image extension: '" << extension << "'" << std::endl;
@@ -111,30 +123,6 @@ int32_t main(int32_t argc_, char** argv_) {
     std::cerr << u;
   }
   std::cerr << extension << "'" << std::endl;
-
-  //ds load camera matrix - for now only KITTI parsing
-  std::ifstream file_calibration(file_name_calibration, std::ifstream::in);
-  std::string line_buffer("");
-  std::getline(file_calibration, line_buffer);
-  if (line_buffer.empty()) {
-    std::cerr << "ERROR: invalid camera calibration file provided" << std::endl;
-    return EXIT_FAILURE;
-  }
-  std::istringstream stream(line_buffer);
-  Eigen::Matrix3d camera_calibration_matrix(Eigen::Matrix3d::Identity());
-
-  //ds parse in fixed order TODO microfunction
-  std::string filler("");
-  stream >> filler;
-  stream >> camera_calibration_matrix(0,0);
-  stream >> filler;
-  stream >> camera_calibration_matrix(0,2);
-  stream >> filler;
-  stream >> filler;
-  stream >> camera_calibration_matrix(1,1);
-  stream >> camera_calibration_matrix(1,2);
-  file_calibration.close();
-  std::cerr << "loaded camera calibration matrix: \n" << camera_calibration_matrix << std::endl;
 
   //ds miscellaneous configuration
   const uint32_t maximum_descriptor_distance = 25; //ds number of mismatching bits
@@ -154,22 +142,23 @@ int32_t main(int32_t argc_, char** argv_) {
   //ds 'map'
   std::vector<std::vector<Framepoint*>> framepoints_per_image(0);
 
-  //ds viewer
+  //ds estimated trajectory
+  IsometryVector estimated_poses(1, Eigen::Isometry3d::Identity());
+
+  //ds initialize viewer
   QApplication ui_server(argc_, argv_);
   Viewer viewer;
   viewer.show();
   viewer.updateGL();
 
-  //ds constant velocity motion model
-  Eigen::Isometry3d motion_previous(Eigen::Isometry3d::Identity());
+  //ds transform robot to camera (for visualization purposes only)
   Eigen::Isometry3d robot_to_camera(Eigen::Isometry3d::Identity());
   robot_to_camera.linear() << 0,  0,  1,
                              -1,  0,  0,
                               0, -1,  0;
 
-  //ds estimated trajectory
-  IsometryVector estimated_poses(0);
-  estimated_poses.push_back(Eigen::Isometry3d::Identity());
+  //ds constant velocity motion model bookkeeping
+  Eigen::Isometry3d motion_previous(Eigen::Isometry3d::Identity());
 
   //ds allocate an empty tree
   Tree hbst_tree;
@@ -180,7 +169,7 @@ int32_t main(int32_t argc_, char** argv_) {
   cv::Mat image_current               = cv::imread(file_name_image_current, CV_LOAD_IMAGE_GRAYSCALE);
   while (image_current.rows != 0 && image_current.cols != 0) {
 
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// FEATURE EXTRACTION -----------------------------------------------------------------------------------------------------------------------------------------------------
     //ds detect FAST keypoints
     std::vector<cv::KeyPoint> keypoints;
     keypoint_detector->detect(image_current, keypoints);
@@ -195,20 +184,16 @@ int32_t main(int32_t argc_, char** argv_) {
       framepoints[u] = new Framepoint(keypoints[u], descriptors.row(u));
     }
     framepoints_per_image.push_back(framepoints);
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+// HBST FEATURE MATCHING ----------------------------------------------------------------------------------------------------------------------------------------------------
     //ds obtain linked matchables
     const MatchableVector matchables(Tree::getMatchablesWithPointer<Framepoint*>(descriptors, framepoints, number_of_processed_images));
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //ds obtain matches against all inserted matchables (i.e. images so far)
     MatchVectorMap matches_per_image;
     hbst_tree.matchAndAdd(matchables, matches_per_image, maximum_descriptor_distance);
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
     //ds info
     cv::Mat image_display(image_current);
@@ -218,33 +203,29 @@ int32_t main(int32_t argc_, char** argv_) {
     uint32_t number_of_measurements = 0;
     if (matches_per_image.size() > 0) {
 
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// MATCH PRUNING AND BOOKKEEPING --------------------------------------------------------------------------------------------------------------------------------------------
       //ds grab matches from previous image only (currently ignoring matches to images which lay further in the past)
       const MatchVector& matches(matches_per_image[number_of_processed_images-1]);
       std::vector<Framepoint*> current_points(matches.size());
-      std::vector<cv::Point2d> image_points_current(matches.size());
-      std::vector<cv::Point2d> image_points_previous(matches.size());
 
       //ds ignorantly filter outlier matches in a brutal loop
-      double mean_disparity_pixels = 0;
       double average_track_length  = 0;
       std::set<Framepoint*> linked_previous;
       for (uint32_t u = 0; u < current_points.size(); ++u) {
 
-        //ds mother of all EVIL casts in cpp TODO maybe adjust library
+        //ds mother of all EVIL casts in 'c++' TODO maybe adjust library
         Framepoint* current_point  = const_cast<Framepoint*>(static_cast<const Framepoint*>(matches[u].pointer_query));
         Framepoint* previous_point = const_cast<Framepoint*>(static_cast<const Framepoint*>(matches[u].pointer_reference));
 
-        //ds cross-check if we not already matched against this previous point TODO enable crosscheck in library
+        //ds cross-check if we not already matched against this previous point TODO enable cross-check in HBST
         if (linked_previous.count(previous_point)) {
 
-          //ds rudely skip the track
+          //ds rudely ignore the track
           continue;
         }
 
         //ds check maximum tracking distance
-        const double disparity_pixels = cv::norm(cv::Mat(current_point->keypoint.pt), cv::Mat(previous_point->keypoint.pt));
-        if (disparity_pixels < maximum_keypoint_distance) {
+        if (cv::norm(cv::Mat(current_point->keypoint.pt), cv::Mat(previous_point->keypoint.pt)) < maximum_keypoint_distance) {
 
           //ds establish track between framepoints
           current_point->previous     = previous_point;
@@ -253,29 +234,22 @@ int32_t main(int32_t argc_, char** argv_) {
           linked_previous.insert(previous_point);
 
           //ds record match
-          current_points[number_of_measurements]        = current_point;
-          image_points_current[number_of_measurements]  = current_point->keypoint.pt;
-          image_points_previous[number_of_measurements] = previous_point->keypoint.pt;
+          current_points[number_of_measurements] = current_point;
 
           //ds initial guess statistic
-          mean_disparity_pixels += disparity_pixels;
           ++number_of_measurements;
         }
       }
       current_points.resize(number_of_measurements);
-      image_points_current.resize(number_of_measurements);
-      image_points_previous.resize(number_of_measurements);
-      mean_disparity_pixels /= number_of_measurements;
       average_track_length /= number_of_measurements;
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       std::cerr << "read image: " << file_name_image_current
                 << " with keypoints/descriptors: " << descriptors.rows
                 << " inlier tracks: " << number_of_measurements
-                << " mean disparity: " << mean_disparity_pixels
                 << " average track length: " << average_track_length << std::endl;
 
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// STRUCTURE FROM MOTION GUESS ------------------------------------------------------------------------------------------------------------------------------------------------
       //ds state - transform from previous to current image
       Eigen::Isometry3d previous_to_current = motion_previous;
 
@@ -283,62 +257,18 @@ int32_t main(int32_t argc_, char** argv_) {
       if (number_of_measurements > 100) {
 
         //ds extract motion guess from essential matrix
-        previous_to_current = getMotionFromEssentialMatrix(image_points_previous,
-                                                           image_points_current,
-                                                           camera_calibration_matrix);
+        previous_to_current = getMotionFromEssentialMatrix(current_points, camera_calibration_matrix);
       }
       std::cerr << "initial motion guess: \n" << previous_to_current.matrix() << std::endl;
 
       //ds estimate point positions, removing invalid ones
-      number_of_measurements            = 0;
-      uint32_t number_of_removed_points = 0;
-      uint32_t number_of_new_points     = 0;
-      for (uint32_t u = 0; u < current_points.size(); ++u) {
-        Framepoint* point_current  = current_points[u];
-        Framepoint* point_previous = point_current->previous;
+      estimatePointsInCamerasFromMotion(current_points, previous_to_current, camera_calibration_matrix);
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        //ds obtain point triangulation candidates
-        std::pair<Eigen::Vector3d, Eigen::Vector3d> candidates = getPointsInCameras(point_previous->keypoint.pt,
-                                                                                    point_current->keypoint.pt,
-                                                                                    previous_to_current,
-                                                                                    camera_calibration_matrix);
-
-        //ds use midpoint as initial guess
-        const Eigen::Vector3d midpoint_in_camera_previous = (candidates.first+previous_to_current.inverse()*candidates.second)/2;
-
-        //ds drop invalid guesses
-        if (midpoint_in_camera_previous.z() <= 0) {
-          ++number_of_removed_points;
-          continue;
-        }
-
-        //ds keep point
-        current_points[number_of_measurements] = point_current;
-
-        //ds if there's no previous estimation
-        if (!point_previous->previous) {
-
-          //ds set initial guess
-          point_previous->coordinates_in_camera = midpoint_in_camera_previous;
-          ++number_of_new_points;
-        } else {
-
-          //ds average previous guesses
-          point_previous->coordinates_in_camera = (point_previous->coordinates_in_camera+midpoint_in_camera_previous)/2;
-        }
-        ++number_of_measurements;
-      }
-      current_points.resize(number_of_measurements);
-      std::cerr << "number of new points: " << number_of_new_points << "/" << number_of_measurements << std::endl;
-      std::cerr << "number of removed points: " << number_of_removed_points << "/" << number_of_measurements << std::endl;
-
+// IMAGE REGISTRATION (INITIAL POSE GUESS OPTIMIZATION) -----------------------------------------------------------------------------------------
       //ds always use the constant velocity motion model for pose motion guess
       previous_to_current = motion_previous;
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
       //ds initialize LS
       const uint32_t maximum_number_of_iterations = 100;
       double total_error_squared_previous         = 0;
@@ -346,10 +276,11 @@ int32_t main(int32_t argc_, char** argv_) {
       Eigen::Matrix<double, 6, 6> H(Eigen::Matrix<double, 6, 6>::Zero());
       Eigen::Matrix<double, 6, 1> b(Eigen::Matrix<double, 6, 1>::Zero());
       Eigen::Matrix2d omega(Eigen::Matrix2d::Identity());
+      uint32_t number_of_iterations               = 0;
 
       //ds damping
       Eigen::Matrix<double, 6, 6> damping(Eigen::Matrix<double, 6, 6>::Identity());
-      damping *= 1;
+      damping *= number_of_measurements;
 
       //ds start iterations
       for (uint32_t u = 0; u < maximum_number_of_iterations; ++u) {
@@ -368,8 +299,7 @@ int32_t main(int32_t argc_, char** argv_) {
           const Eigen::Vector2d image_coordinates_fixed(keypoint_in_current_image.pt.x, keypoint_in_current_image.pt.y);
 
           //ds transform point from previous frame into current
-          const Eigen::Vector3d point_in_previous_camera = previous_point->coordinates_in_camera;
-          const Eigen::Vector3d point_in_current_camera(previous_to_current*point_in_previous_camera);
+          const Eigen::Vector3d point_in_current_camera(previous_to_current*previous_point->coordinates_in_camera);
 
           //ds check for invalid depth
           if (point_in_current_camera.z() <= 0) {
@@ -430,25 +360,26 @@ int32_t main(int32_t argc_, char** argv_) {
         }
 
         //ds compute current perturbation
-        const Eigen::VectorXd dx = (H+damping).ldlt().solve(-b);
+        const Eigen::VectorXd dx = (H+damping).fullPivLu().solve(-b);
 
         //ds apply perturbation to pose
         previous_to_current = v2t(dx)*previous_to_current;
 
         //ds enforce proper rotation matrix
-        const Eigen::Matrix3d rotation = previous_to_current.linear();
+        const Eigen::Matrix3d rotation      = previous_to_current.linear();
         Eigen::Matrix3d rotation_squared    = rotation.transpose() * rotation;
         rotation_squared.diagonal().array() -= 1;
         previous_to_current.linear()        -= 0.5*rotation*rotation_squared;
 
-        //ds check for convergence
+        //ds check for convergence and terminate if so
         if (std::fabs(total_error_squared-total_error_squared_previous) < 1e-5) {
           break;
         }
         total_error_squared_previous = total_error_squared;
+        ++number_of_iterations;
       }
-
-      std::cerr << "final motion estimate: \n" << previous_to_current.matrix() << std::endl;
+      std::cerr << "final motion estimate (average squared pixel error: " << total_error_squared_previous/number_of_measurements
+                << ", iterations: " << number_of_iterations << "): \n" << previous_to_current.matrix() << std::endl;
 
       //ds update framepoints of current camera for the next image registration
       for (Framepoint* current_point: current_points) {
@@ -484,7 +415,6 @@ int32_t main(int32_t argc_, char** argv_) {
     viewer.updateGL();
     ui_server.processEvents();
 
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //ds compute file name for next image
     ++number_of_processed_images;
     std::string file_name_tail             = std::to_string(number_of_processed_images);
@@ -496,7 +426,6 @@ int32_t main(int32_t argc_, char** argv_) {
 
     //ds read next image
     image_current = cv::imread(file_name_image_current, CV_LOAD_IMAGE_GRAYSCALE);
-// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   }
   std::cerr << "stopped at image: " << file_name_image_current << " - not found" << std::endl;
 
@@ -526,15 +455,14 @@ void Viewer::init() {
   glEnable(GL_NORMALIZE);
   glShadeModel(GL_FLAT);
 
-  //ds set custom camera
+  //ds set custom camera and free old one
   if (_camera) {delete _camera;}
   _camera = new StandardCamera();
   _camera->setPosition(qglviewer::Vec(0.0f, 0.0f, 1000.0f));
   _camera->lookAt(qglviewer::Vec(0.0f, 0.0f, 0.0f));
+  qglviewer::Camera* old_camera = camera();
   setCamera(_camera);
-
-  //ds initial pose
-  _poses.push_back(Eigen::Isometry3d::Identity());
+  delete old_camera;
 }
 
 void Viewer::draw() {
@@ -555,6 +483,32 @@ void Viewer::draw() {
   }
   glEnd();
   glPopMatrix();
+}
+
+Eigen::Matrix3d getCameraCalibrationMatrixKITTI(const std::string& file_name_calibration_) {
+
+  //ds load camera matrix - for now only KITTI parsing
+  std::ifstream file_calibration(file_name_calibration_, std::ifstream::in);
+  std::string line_buffer("");
+  std::getline(file_calibration, line_buffer);
+  if (line_buffer.empty()) {
+    throw std::runtime_error("invalid camera calibration file provided");
+  }
+  std::istringstream stream(line_buffer);
+  Eigen::Matrix3d camera_calibration_matrix(Eigen::Matrix3d::Identity());
+
+  //ds parse in fixed order TODO microfunction
+  std::string filler(""); stream >> filler;
+  stream >> camera_calibration_matrix(0,0);
+  stream >> filler;
+  stream >> camera_calibration_matrix(0,2);
+  stream >> filler; stream >> filler;
+  stream >> camera_calibration_matrix(1,1);
+  stream >> camera_calibration_matrix(1,2);
+  file_calibration.close();
+  stream.clear();
+  std::cerr << "loaded camera calibration matrix: \n" << camera_calibration_matrix << std::endl;
+  return camera_calibration_matrix;
 }
 
 Eigen::Isometry3d v2t(const Eigen::Matrix<double, 6, 1>& t) {
@@ -582,25 +536,78 @@ Eigen::Matrix3d skew(const Eigen::Vector3d& p){
   return s;
 }
 
-Eigen::Isometry3d getMotionFromEssentialMatrix(const std::vector<cv::Point2d>& image_points_previous_,
-                                               const std::vector<cv::Point2d>& image_points_current_,
+void estimatePointsInCamerasFromMotion(std::vector<Framepoint*>& current_points_,
+                             const Eigen::Isometry3d& motion_previous_to_current_,
+                             const Eigen::Matrix3d& camera_calibration_matrix_) {
+
+  //ds estimate point positions, removing invalid ones
+  uint32_t number_of_measurements   = 0;
+  uint32_t number_of_removed_points = 0;
+  uint32_t number_of_new_points     = 0;
+  for (uint32_t u = 0; u < current_points_.size(); ++u) {
+    Framepoint* point_current  = current_points_[u];
+    Framepoint* point_previous = point_current->previous;
+
+    //ds obtain point triangulation candidates
+    const std::pair<Eigen::Vector3d, Eigen::Vector3d> candidates = getPointsInCameras(point_previous->keypoint.pt,
+                                                                                      point_current->keypoint.pt,
+                                                                                      motion_previous_to_current_,
+                                                                                      camera_calibration_matrix_);
+
+    //ds use midpoint as initial guess
+    const Eigen::Vector3d midpoint_in_camera_previous = (candidates.first+motion_previous_to_current_.inverse()*candidates.second)/2;
+
+    //ds drop invalid guesses
+    if (midpoint_in_camera_previous.z() <= 0) {
+      ++number_of_removed_points;
+      continue;
+    }
+
+    //ds keep point
+    current_points_[number_of_measurements] = point_current;
+
+    //ds if there's no previous estimation
+    if (!point_previous->previous) {
+
+      //ds set initial guess
+      point_previous->coordinates_in_camera = midpoint_in_camera_previous;
+      ++number_of_new_points;
+    } else {
+
+      //ds average previous guesses including the new one
+      point_previous->coordinates_in_camera = (point_current->track_length*point_previous->coordinates_in_camera+midpoint_in_camera_previous)/(1+point_current->track_length);
+    }
+    ++number_of_measurements;
+  }
+  current_points_.resize(number_of_measurements);
+  std::cerr << "number of new points: " << number_of_new_points << "/" << number_of_measurements << std::endl;
+  std::cerr << "number of removed points: " << number_of_removed_points << "/" << number_of_measurements << std::endl;
+}
+
+Eigen::Isometry3d getMotionFromEssentialMatrix(const std::vector<Framepoint*>& current_points_,
                                                const Eigen::Matrix3d& camera_calibration_matrix_) {
+  std::vector<cv::Point2d> image_points_current(current_points_.size());
+  std::vector<cv::Point2d> image_points_previous(current_points_.size());
+  for (uint32_t u = 0; u < current_points_.size(); ++u) {
+    image_points_current[u]  = current_points_[u]->keypoint.pt;
+    image_points_previous[u] = current_points_[u]->previous->keypoint.pt;
+  }
 
   //ds input validation
   if (camera_calibration_matrix_(0,0) != camera_calibration_matrix_(1,1)) {
     throw std::runtime_error("invalid camera matrix, symmetric focal length required");
   }
-  if (image_points_previous_.size() != image_points_current_.size()) {
+  if (image_points_previous.size() != image_points_current.size()) {
     throw std::runtime_error("mismatching number of image point correspondences");
   }
 
-  const double focal_length = camera_calibration_matrix_(0,0);
+  const double& focal_length = camera_calibration_matrix_(0,0);
   const cv::Point2d principal_point(camera_calibration_matrix_(0,2),
                                     camera_calibration_matrix_(1,2));
 
   //ds retrieve essential matrix for previous and current keypoint associations
-  const cv::Mat essential_matrix = cv::findEssentialMat(image_points_previous_,
-                                                        image_points_current_,
+  const cv::Mat essential_matrix = cv::findEssentialMat(image_points_previous,
+                                                        image_points_current,
                                                         focal_length,
                                                         principal_point);
 
@@ -608,14 +615,14 @@ Eigen::Isometry3d getMotionFromEssentialMatrix(const std::vector<cv::Point2d>& i
   cv::Mat rotation_previous_to_current;
   cv::Mat translation_previous_to_current;
   const uint32_t number_of_essential_inliers = cv::recoverPose(essential_matrix,
-                                                               image_points_previous_,
-                                                               image_points_current_,
+                                                               image_points_previous,
+                                                               image_points_current,
                                                                rotation_previous_to_current,
                                                                translation_previous_to_current,
                                                                focal_length,
                                                                principal_point);
 
-  std::cerr << "motion estimation inliers: " << number_of_essential_inliers << "/" << image_points_previous_.size() << std::endl;
+  std::cerr << "motion estimation inliers: " << number_of_essential_inliers << "/" << image_points_previous.size() << std::endl;
 
   //ds convert to eigen space
   Eigen::Isometry3d previous_to_current(Eigen::Isometry3d::Identity());
