@@ -41,9 +41,26 @@ More robust descriptor track based tree construction can be inspected in:
     match_probabilistic
 
 ## Eigen, OpenCV and QGLViewer:
-We implemented a simple monocular visual odometry system based on HBST data association:
+For now, only processing of the raw [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) is supported. <br>
+Note that for building these examples, the [libQGLViewer](http://libqglviewer.com/) library is required.
+
+We implemented a very simple monocular visual odometry system based on HBST data association, including a 3D viewer in a single source file (700 lines):
 
     rosrun srrg_hbst smoother_monocular image_0/000000.png calib.txt
 
-For now, only processing of the raw [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) is supported. <br>
-Note that for building these examples, the [libQGLViewer](http://libqglviewer.com/) library is required.
+As an initial motion guess we dissect the essential matrix for feature matches between the current and a previous image. <br>
+In case of insufficient conditions the motion from a previous is utilized (constant velocity motion model). <br>
+From this motion guess we obtain an initial guess for the features 3D point positions in the first camera frame (SfM via midpoint triangulation). <br>
+Based on the 3D camera positions and the measured 2D image positions of the features we refine the motion guess using a Projective ICP approach. <br>
+The system experiences significant drift, resulting from the dead reckoning motion estimation scheme,
+as well as the scale ambiguity that is present in a monocular system.
+
+We also implemented a very simple binocular visual odometry system based on HBST data association, including a 3D viewer in a single source file (600 lines):
+
+    rosrun srrg_hbst smoother_binocular image_0/000000.png image_1/000000.png calib.txt
+
+Where `image_0/000000.png` defines the left camera input image stream, and `image_1/000000.png` the right camera input image stream. <br>
+As an initial motion guess the motion from a previous is utilized (constant velocity motion model). <br>
+The features 3D point positions are obtained from stereopsis, defined by a rigid stereo camera configuration. <br>
+Based on the 3D camera positions and the measured 2D image positions of the features we refine the motion guess using a Stereo Projective ICP approach. <br>
+The system experiences significant drift, resulting from the dead reckoning motion estimation scheme but not the scale ambiguity is in the above example.

@@ -42,6 +42,15 @@ if(SRRG_HBST_HAS_EIGEN)
         ${QT_LIBRARIES}
         -lglut -lGL
       )
+      
+      #ds binocular smoother example
+      add_executable(smoother_binocular smoother_binocular.cpp)
+      target_link_libraries(smoother_binocular 
+        ${OpenCV_LIBS} 
+        ${QGLVIEWER_LIBRARY} 
+        ${QT_LIBRARIES}
+        -lglut -lGL
+      )
     endif()
   endif()
 endif()
