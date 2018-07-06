@@ -48,9 +48,9 @@ An example dataset sequence is available at: [kitti_sequence_00](https://drive.g
 
 We implemented a very simple <b>monocular</b> visual odometry system based on HBST data association, including a 3D viewer in a single source file (700 lines):
 
-    smoother_monocular kitti_sequence_00/image_0/000000.png calib.txt
+    smoother_monocular kitti_sequence_00/image_0/000000.png kitti_sequence_00/calib.txt
     
-Where `kitti_sequence_00/image_0/000000.png` defines the single camera input image stream corresponding to the camera calibration of `calib.txt`.
+Where `kitti_sequence_00/image_0/000000.png` defines the single camera input image stream corresponding to the camera calibration of `kitti_sequence_00/calib.txt`.
 
 As an initial motion guess we dissect the essential matrix for feature matches between the current and a previous image. <br>
 In case of insufficient conditions the motion from a previous is utilized (constant velocity motion model). <br>
@@ -61,10 +61,10 @@ as well as the scale ambiguity that is present in a monocular system.
 
 We also implemented a very simple <b>binocular</b> visual odometry system based on HBST data association, including a 3D viewer in a single source file (600 lines):
 
-    smoother_binocular kitti_sequence_00/image_0/000000.png kitti_sequence_00/image_1/000000.png calib.txt
+    smoother_binocular kitti_sequence_00/image_0/000000.png kitti_sequence_00/image_1/000000.png kitti_sequence_00/calib.txt
 
 Where `kitti_sequence_00/image_0/000000.png` defines the left camera input image stream, <br>
-and `kitti_sequence_00/image_1/000000.png` defines the right camera input image stream corresponding to the stereo camera calibration of `calib.txt`.
+and `kitti_sequence_00/image_1/000000.png` defines the right camera input image stream corresponding to the stereo camera calibration of `kitti_sequence_00/calib.txt`.
 
 As an initial motion guess the motion from a previous is utilized (constant velocity motion model). <br>
 The features 3D point positions are obtained from stereopsis, defined by a rigid stereo camera configuration. <br>
