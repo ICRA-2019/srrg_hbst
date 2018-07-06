@@ -38,10 +38,10 @@ struct Framepoint {
              const cv::Mat& descriptor_left_,
              const cv::Mat& descriptor_right_,
              const Eigen::Vector3d& coordinates_in_camera_): keypoint_left(keypoint_left_),
-                                                keypoint_right(keypoint_right_),
-                                                descriptor_left(descriptor_left_),
-                                                descriptor_right(descriptor_right_),
-                                                coordinates_in_camera(coordinates_in_camera_) {}
+                                                             keypoint_right(keypoint_right_),
+                                                             descriptor_left(descriptor_left_),
+                                                             descriptor_right(descriptor_right_),
+                                                             coordinates_in_camera(coordinates_in_camera_) {}
   Framepoint() = delete;
 
   //ds measured
@@ -53,7 +53,7 @@ struct Framepoint {
   //ds computed
   Framepoint* previous                  = 0;
   uint32_t track_length                 = 0;
-  const Eigen::Vector3d coordinates_in_camera;
+  Eigen::Vector3d coordinates_in_camera;
 };
 
 //ds simple trajectory viewer
@@ -91,7 +91,8 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
                                              const std::vector<cv::KeyPoint>& keypoints_left_,
                                              const std::vector<cv::KeyPoint>& keypoints_right_,
                                              const cv::Mat& descriptors_left_,
-                                             const cv::Mat& descriptors_right_);
+                                             const cv::Mat& descriptors_right_,
+                                             const uint32_t& maximum_descriptor_distance_);
 
 
 
@@ -202,7 +203,8 @@ int32_t main(int32_t argc_, char** argv_) {
                                                                 keypoints_left,
                                                                 keypoints_right,
                                                                 descriptors_left,
-                                                                descriptors_right));
+                                                                descriptors_right,
+                                                                maximum_descriptor_distance));
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // HBST FEATURE MATCHING ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -265,7 +267,7 @@ int32_t main(int32_t argc_, char** argv_) {
       average_track_length /= number_of_measurements;
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-      std::cerr << "read images: " << file_name_image_current_left << "|" << file_name_image_current_right
+      std::cerr << "read images: " << file_name_image_current_left << " | " << file_name_image_current_right
                 << " with triangulated points: " << current_points.size()
                 << " inlier tracks: " << number_of_measurements
                 << " average track length: " << average_track_length << std::endl;
@@ -280,7 +282,7 @@ int32_t main(int32_t argc_, char** argv_) {
       const double maximum_error_squared          = 10*10;
       Eigen::Matrix<double, 6, 6> H(Eigen::Matrix<double, 6, 6>::Zero());
       Eigen::Matrix<double, 6, 1> b(Eigen::Matrix<double, 6, 1>::Zero());
-      Eigen::Matrix2d omega(Eigen::Matrix2d::Identity());
+      Eigen::Matrix3d omega(Eigen::Matrix3d::Identity());
       uint32_t number_of_iterations               = 0;
 
       //ds damping
@@ -298,34 +300,44 @@ int32_t main(int32_t argc_, char** argv_) {
           omega.setIdentity();
           const Framepoint* current_point  = current_points[index_measurement];
           const Framepoint* previous_point = current_point->previous;
-          const cv::KeyPoint& keypoint_in_current_image = current_point->keypoint_left;
-
-          //ds measurements
-          const Eigen::Vector2d image_coordinates_fixed(keypoint_in_current_image.pt.x, keypoint_in_current_image.pt.y);
 
           //ds transform point from previous frame into current
-          const Eigen::Vector3d point_in_current_camera(previous_to_current*previous_point->coordinates_in_camera);
+          const Eigen::Vector3d point_in_camera_left(previous_to_current*previous_point->coordinates_in_camera);
 
           //ds check for invalid depth
-          if (point_in_current_camera.z() <= 0) {
+          if (point_in_camera_left.z() <= 0) {
             continue;
           }
 
           //ds project past point in current frame
-          const Eigen::Vector3d homogeneous_coordinates = camera_calibration_matrix*point_in_current_camera;
-          const Eigen::Vector2d image_coordinates_moving(homogeneous_coordinates.x()/homogeneous_coordinates.z(),
-                                                         homogeneous_coordinates.y()/homogeneous_coordinates.z());
+          const Eigen::Vector3d homogeneous_coordinates_left  = camera_calibration_matrix*point_in_camera_left;
+          const Eigen::Vector3d homogeneous_coordinates_right = homogeneous_coordinates_left+baseline_pixels_;
+          const Eigen::Vector2d image_coordinates_moving_left(homogeneous_coordinates_left.x()/homogeneous_coordinates_left.z(),
+                                                              homogeneous_coordinates_left.y()/homogeneous_coordinates_left.z());
+          const Eigen::Vector2d image_coordinates_moving_right(homogeneous_coordinates_right.x()/homogeneous_coordinates_right.z(),
+                                                               homogeneous_coordinates_right.y()/homogeneous_coordinates_right.z());
 
           //ds check if out of range
-          if (image_coordinates_moving.x() < 0
-            || image_coordinates_moving.y() < 0
-            || image_coordinates_moving.x() > image_current_left.cols
-            || image_coordinates_moving.y() > image_current_left.rows) {
+          if (image_coordinates_moving_left.x() < 0
+            || image_coordinates_moving_left.y() < 0
+            || image_coordinates_moving_left.x() > image_current_left.cols
+            || image_coordinates_moving_left.y() > image_current_left.rows
+            || image_coordinates_moving_right.x() < 0
+            || image_coordinates_moving_right.y() < 0
+            || image_coordinates_moving_right.x() > image_current_right.cols
+            || image_coordinates_moving_right.y() > image_current_right.rows ) {
             continue;
           }
 
-          //ds compute error
-          const Eigen::Vector2d error(image_coordinates_moving-image_coordinates_fixed);
+          //ds compute error - only once for the vertical component since we're assuming rectified images with horizontal stereopsis
+          const Eigen::Vector3d error(image_coordinates_moving_left.x() - current_point->keypoint_left.pt.x,
+                                      image_coordinates_moving_left.y() - current_point->keypoint_left.pt.y,
+                                      image_coordinates_moving_right.x() - current_point->keypoint_right.pt.x);
+
+          //ds weight horizontal error twice (since in fact the error stems from two measurements)
+          omega(1,1) *= 2;
+
+          //ds squared error
           const double error_squared = error.transpose()*omega*error;
 
           //ds kernelize
@@ -336,28 +348,40 @@ int32_t main(int32_t argc_, char** argv_) {
           //ds update error
           total_error_squared += error_squared;
 
-          //ds precompute
-          const double inverse_sampled_c         = 1/homogeneous_coordinates.z();
-          const double inverse_sampled_c_squared = inverse_sampled_c*inverse_sampled_c;
+          //ds precompute homogeneous divisions in both camera image planes
+          const double inverse_sampled_c_left          = 1/homogeneous_coordinates_left.z();
+          const double inverse_sampled_c_squared_left  = inverse_sampled_c_left*inverse_sampled_c_left;
+          const double inverse_sampled_c_right         = 1/homogeneous_coordinates_right.z();
+          const double inverse_sampled_c_squared_right = inverse_sampled_c_right*inverse_sampled_c_right;
 
-          //ds jacobians
-          Eigen::Matrix<double, 2, 6> jacobian(Eigen::Matrix<double, 2, 6>::Zero());
+          //ds jacobian
+          Eigen::Matrix<double, 3, 6> jacobian(Eigen::Matrix<double, 3, 6>::Zero());
 
           //ds jacobian of the transform
           Eigen::Matrix<double, 3, 6> jacobian_transform;
           jacobian_transform.block<3,3>(0,0) = Eigen::Matrix3d::Identity();
-          jacobian_transform.block<3,3>(0,3) = -2*skew(point_in_current_camera);
+          jacobian_transform.block<3,3>(0,3) = -2*skew(point_in_camera_left);
 
-          //ds jacobian parts of the homogeneous division of the projection in the current image
-          Eigen::Matrix<double, 2, 3> jacobian_homogeneous;
-          jacobian_homogeneous << inverse_sampled_c, 0, -homogeneous_coordinates.x()*inverse_sampled_c_squared,
-                                  0, inverse_sampled_c, -homogeneous_coordinates.y()*inverse_sampled_c_squared;
+          //ds precompute parts of the final jacobian
+          const Eigen::Matrix<double, 3, 6> jacobian_camera_matrix_transform(camera_calibration_matrix*jacobian_transform);
 
-          //ds assemble full jacobian - pose part
-          jacobian = jacobian_homogeneous*camera_calibration_matrix*jacobian_transform;
+          //ds jacobian parts of the homogeneous division: left
+          Eigen::Matrix<double, 2, 3> jacobian_homogeneous_left;
+          jacobian_homogeneous_left << inverse_sampled_c_left, 0, -homogeneous_coordinates_left.x()*inverse_sampled_c_squared_left,
+                                       0, inverse_sampled_c_left, -homogeneous_coordinates_left.y()*inverse_sampled_c_squared_left;
+
+          //ds jacobian parts of the homogeneous division: right, we compute only the contribution for the horizontal error
+          Eigen::Matrix<double, 1, 3> jacobian_homogeneous_right;
+          jacobian_homogeneous_right << inverse_sampled_c_right, 0, -homogeneous_coordinates_right.x()*inverse_sampled_c_squared_right;
+
+          //ds we have to compute the full block
+          jacobian.block<2,6>(0,0) = jacobian_homogeneous_left*jacobian_camera_matrix_transform;
+
+          //ds we only have to compute the horizontal block
+          jacobian.block<1,6>(2,0) = jacobian_homogeneous_right*jacobian_camera_matrix_transform;
 
           //ds precompute
-          const Eigen::Matrix<double, 6, 2> jacobian_transposed = jacobian.transpose();
+          const Eigen::Matrix<double, 6, 3> jacobian_transposed = jacobian.transpose();
 
           //ds sum up
           H += jacobian_transposed*omega*jacobian;
@@ -386,6 +410,12 @@ int32_t main(int32_t argc_, char** argv_) {
       std::cerr << "final motion estimate (average squared pixel error: " << total_error_squared_previous/number_of_measurements
                 << ", iterations: " << number_of_iterations << "): \n" << previous_to_current.matrix() << std::endl;
 
+      //ds refine triangulated point positions in current frame based on transform and positions in previous frame
+      for (Framepoint* framepoint: current_points) {
+        framepoint->coordinates_in_camera += previous_to_current*framepoint->previous->coordinates_in_camera;
+        framepoint->coordinates_in_camera /= 2;
+      }
+
       //ds update motion model
       motion_previous = previous_to_current;
 
@@ -398,7 +428,7 @@ int32_t main(int32_t argc_, char** argv_) {
         cv::line(image_display, current_point->keypoint_left.pt, current_point->previous->keypoint_left.pt, cv::Scalar(0, 255, 0));
       }
     } else {
-      std::cerr << "read image: " << file_name_image_current_left << "|" << file_name_image_current_right
+      std::cerr << "read image: " << file_name_image_current_left << " | " << file_name_image_current_right
                 << " with triangulated points: " << current_points.size()
                 << " initial image " << std::endl;
     }
@@ -513,10 +543,7 @@ Eigen::Matrix3d getCameraCalibrationMatrixKITTI(const std::string& file_name_cal
   //ds read second projection matrix to obtain the horizontal offset
   std::getline(file_calibration, line_buffer);
   std::istringstream stream_right(line_buffer);
-  stream_right >> filler;
-  stream_right >> filler;
-  stream_right >> filler;
-  stream_right >> filler;
+  stream_right >> filler; stream_right >> filler; stream_right >> filler; stream_right >> filler;
   stream_right >> baseline_pixels_(0);
   file_calibration.close();
   std::cerr << "loaded camera calibration matrix: \n" << camera_calibration_matrix << std::endl;
@@ -554,8 +581,10 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
                                              const std::vector<cv::KeyPoint>& keypoints_left_,
                                              const std::vector<cv::KeyPoint>& keypoints_right_,
                                              const cv::Mat& descriptors_left_,
-                                             const cv::Mat& descriptors_right_) {
-  std::vector<Framepoint*> points(0);
+                                             const cv::Mat& descriptors_right_,
+                                             const uint32_t& maximum_descriptor_distance_) {
+  std::vector<Framepoint*> points(descriptors_left_.rows);
+  uint32_t number_of_triangulated_points = 0;
 
   //ds configuration
   const double b_u = -offset_to_camera_right_(0);
@@ -563,40 +592,41 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
   const double c_u = camera_calibration_matrix_(0, 2);
   const double c_v = camera_calibration_matrix_(1, 2);
 
-  //ds exhaustive stereo matching
-  cv::BFMatcher matcher(cv::NORM_HAMMING, true);
-  std::vector<cv::DMatch> stereo_matches;
-  matcher.match(descriptors_left_, descriptors_right_, stereo_matches);
+  //ds perform stereo matching using a temporary HBST - the left descriptors are the reference
+  Tree tree_left(descriptors_left_);
+  MatchVector stereo_matches;
+  tree_left.match(descriptors_right_, stereo_matches, maximum_descriptor_distance_);
 
   //ds for each stereo match
-  for (const cv::DMatch& match: stereo_matches) {
+  for (const Match& match: stereo_matches) {
+    const uint32_t& index_left  = match.identifier_reference;
+    const uint32_t& index_right = match.identifier_query;
 
-    //ds if resulting distance is acceptable
-    if (match.distance < 50) {
-      const cv::Point2d point_in_image_left(keypoints_left_[match.queryIdx].pt);
-      const cv::Point2d point_in_image_right(keypoints_right_[match.trainIdx].pt);
-      const double disparity_pixels = point_in_image_left.x-point_in_image_right.x;
+    const cv::Point2d point_in_image_left(keypoints_left_[index_left].pt);
+    const cv::Point2d point_in_image_right(keypoints_right_[index_right].pt);
+    const double disparity_pixels = point_in_image_left.x-point_in_image_right.x;
 
-      //ds if disparity is sufficient
-      if (disparity_pixels > 0) {
+    //ds if disparity is sufficient
+    if (disparity_pixels > 0) {
 
-        //ds compute depth from disparity
-        const float depth_meters = b_u/disparity_pixels;
+      //ds compute depth from disparity
+      const float depth_meters = b_u/disparity_pixels;
 
-        //ds compute full point
-        const float depth_meters_per_pixel = depth_meters/f_u;
-        const Eigen::Vector3d point_in_camera(depth_meters_per_pixel*(point_in_image_left.x-c_u),
-                                              depth_meters_per_pixel*(point_in_image_left.y-c_v),
-                                              depth_meters);
+      //ds compute full point
+      const float depth_meters_per_pixel = depth_meters/f_u;
+      const Eigen::Vector3d point_in_camera(depth_meters_per_pixel*(point_in_image_left.x-c_u),
+                                            depth_meters_per_pixel*(point_in_image_left.y-c_v),
+                                            depth_meters);
 
-        //ds add the point
-        points.push_back(new Framepoint(keypoints_left_[match.queryIdx],
-                                        keypoints_right_[match.trainIdx],
-                                        descriptors_left_.row(match.queryIdx),
-                                        descriptors_right_.row(match.trainIdx),
-                                        point_in_camera));
-      }
+      //ds add the point
+      points[number_of_triangulated_points] = new Framepoint(keypoints_left_[index_left],
+                                                             keypoints_right_[index_right],
+                                                             descriptors_left_.row(index_left),
+                                                             descriptors_right_.row(index_right),
+                                                             point_in_camera);
+      ++number_of_triangulated_points;
     }
   }
+  points.resize(number_of_triangulated_points);
   return points;
 }

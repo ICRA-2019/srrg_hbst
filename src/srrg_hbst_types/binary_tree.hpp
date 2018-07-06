@@ -581,13 +581,17 @@ public:
     return matchables;
   }
 
-  //ds wrapped
   virtual void add(const cv::Mat& matchables_train_,
                    const uint64_t& identifier_tree_) {
     add(getMatchablesWithIndex(matchables_train_, identifier_tree_));
   }
 
-  //ds wrapped
+  virtual void match(const cv::Mat& matchables_query_,
+                     MatchVector& matches_,
+                     const uint32_t& maximum_distance_matching_ = 25) {
+    match(getMatchablesWithIndex(matchables_query_), matches_, maximum_distance_matching_);
+  }
+
   virtual void match(const cv::Mat& matchables_query_,
                      const uint64_t& identifier_tree_,
                      MatchVectorMap& matches_,
@@ -596,7 +600,6 @@ public:
     match(getMatchablesWithIndex(matchables_query_, identifier_tree_), matches_, maximum_distance_matching_);
   }
 
-  //ds wrapped
   virtual void matchAndAdd(const cv::Mat& matchables_query_,
                            const uint64_t& identifier_tree_,
                            MatchVectorMap& matches_,

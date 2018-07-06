@@ -16,7 +16,7 @@ Optional:
 - [libQGLViewer](http://libqglviewer.com/) for visual odometry examples ([viewers](examples))
 - [catkin Command Line Tools](https://catkin-tools.readthedocs.io/en/latest/) for easy CMake project integration
 
-## [Example code](examples) (catkin ready!)
+## [* example code *](examples) (catkin ready!)
 Out of source CMake build sequence for example code (in project root):
 
     mkdir build
@@ -30,7 +30,7 @@ A simple example program with visuals can be called with (from the project root,
 
 Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables. <br>
 The example sequence of 10 images is part of the repository and can be found under `examples/test_images`. <br>
-The example images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
+All images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
 
 ---
 Alternative catkin build:
