@@ -44,9 +44,13 @@ More robust descriptor track based tree construction can be inspected in:
 For now, only processing of the raw [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) is supported. <br>
 Note that for building these examples, the [libQGLViewer](http://libqglviewer.com/) library is required.
 
-We implemented a very simple monocular visual odometry system based on HBST data association, including a 3D viewer in a single source file (700 lines):
+An example dataset sequence is available at: [kitti_sequence_00](https://drive.google.com/open?id=1KPay-nqVXvj5Ht6lfF0KdILQpN97AbRX) (2.3GB, courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php))
 
-    rosrun srrg_hbst smoother_monocular image_0/000000.png calib.txt
+We implemented a very simple <b>monocular</b> visual odometry system based on HBST data association, including a 3D viewer in a single source file (700 lines):
+
+    smoother_monocular kitti_sequence_00/image_0/000000.png calib.txt
+    
+Where `kitti_sequence_00/image_0/000000.png` defines the single camera input image stream corresponding to the camera calibration of `calib.txt`.
 
 As an initial motion guess we dissect the essential matrix for feature matches between the current and a previous image. <br>
 In case of insufficient conditions the motion from a previous is utilized (constant velocity motion model). <br>
@@ -55,12 +59,15 @@ Based on the 3D camera positions and the measured 2D image positions of the feat
 The system experiences significant drift, resulting from the dead reckoning motion estimation scheme,
 as well as the scale ambiguity that is present in a monocular system.
 
-We also implemented a very simple binocular visual odometry system based on HBST data association, including a 3D viewer in a single source file (600 lines):
+We also implemented a very simple <b>binocular</b> visual odometry system based on HBST data association, including a 3D viewer in a single source file (600 lines):
 
-    rosrun srrg_hbst smoother_binocular image_0/000000.png image_1/000000.png calib.txt
+    smoother_binocular kitti_sequence_00/image_0/000000.png kitti_sequence_00/image_1/000000.png calib.txt
 
-Where `image_0/000000.png` defines the left camera input image stream, and `image_1/000000.png` the right camera input image stream. <br>
+Where `kitti_sequence_00/image_0/000000.png` defines the left camera input image stream, <br>
+and `kitti_sequence_00/image_1/000000.png` defines the right camera input image stream corresponding to the stereo camera calibration of `calib.txt`.
+
 As an initial motion guess the motion from a previous is utilized (constant velocity motion model). <br>
 The features 3D point positions are obtained from stereopsis, defined by a rigid stereo camera configuration. <br>
 Based on the 3D camera positions and the measured 2D image positions of the features we refine the motion guess using a Stereo Projective ICP approach. <br>
-The system experiences significant drift, resulting from the dead reckoning motion estimation scheme but not the scale ambiguity is in the above example.
+The system experiences tolerable drift, resulting from the dead reckoning motion estimation scheme. <br>
+The scale is estimated correctly thanks to the available rigid stereo triangulation (assuming a majority of correct triangulation pairs).
