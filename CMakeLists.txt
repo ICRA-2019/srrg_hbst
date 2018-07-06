@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(srrg_hbst)
 
-#ds determine build type, default build type Release
+#ds determine build type, default build type RELEASE
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE RELEASE)
 endif()
-message("srrg_hbst|build type: ${CMAKE_BUILD_TYPE}")
 
-#ds add c++11 support, mediocre optimization, all warnings
-add_definitions(-Ofast -march=native -Wall -pedantic -std=c++11)
-
-#ds debug flags
-#add_definitions(-O0 -march=native -Wall -pedantic -std=c++11 -g)
+#ds check flags for release build
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+  add_definitions(-Ofast -march=native -Wall -pedantic -std=c++11 -DNDEBUG)
+  message("srrg_hbst|adding flags for build type '${CMAKE_BUILD_TYPE}': '-Ofast -march=native -Wall -pedantic -std=c++11 -DNDEBUG'")
+else()
+  add_definitions(-O0 -march=native -Wall -pedantic -std=c++11 -g)
+  message("srrg_hbst|adding flags for build type '${CMAKE_BUILD_TYPE}': '-O0 -march=native -Wall -pedantic -std=c++11 -g'")
+endif()
 
 #ds cmake modules
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)

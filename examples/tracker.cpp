@@ -62,6 +62,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::shared_ptr<Tree> hbst_tree = std::make_shared<Tree>();
 
   //ds process images
+  std::printf("------------[ press any key to step ]------------\n");
   for (uint32_t image_number = 0; image_number < number_of_images; ++image_number) {
 
     //ds build full image file name string

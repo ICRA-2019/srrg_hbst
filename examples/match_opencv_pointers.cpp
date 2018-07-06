@@ -69,6 +69,7 @@ int32_t main(int32_t argc, char** argv) {
   }
 
   //ds check each image against each other and itself (100% ratio)
+  std::printf("------------[ press any key to step ]------------\n");
   for (uint32_t index_query = 0; index_query < 10; ++index_query) {
 
     //ds check reference

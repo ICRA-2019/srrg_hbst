@@ -48,7 +48,7 @@ public:
     //ds if there are at least 2 descriptors (minimal split)
     if(1 < number_of_matchables)
     {
-      assert(!this->has_leaves);
+      assert(!this->has_leafs);
 
       //ds affirm initial situation
       this->index_split_bit = -1;

@@ -78,6 +78,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds check each image against each other and itself (100% ratio)
   std::printf("starting matching with maximum distance: %u \n", maximum_matching_distance);
+  std::printf("------------[ press any key to step ]------------\n");
   for (uint32_t index_query = 0; index_query < number_of_images; ++index_query) {
 
     //ds query HBST with image 1
