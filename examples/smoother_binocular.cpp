@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <Eigen/Geometry>
 #include <qapplication.h>
 #include <QKeyEvent>
@@ -602,8 +603,8 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
     const uint32_t& index_left  = match.identifier_reference;
     const uint32_t& index_right = match.identifier_query;
 
-    const cv::Point2d point_in_image_left(keypoints_left_[index_left].pt);
-    const cv::Point2d point_in_image_right(keypoints_right_[index_right].pt);
+    const cv::Point2d& point_in_image_left  = keypoints_left_[index_left].pt;
+    const cv::Point2d& point_in_image_right = keypoints_right_[index_right].pt;
     const double disparity_pixels = point_in_image_left.x-point_in_image_right.x;
 
     //ds if disparity is sufficient

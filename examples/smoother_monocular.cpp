@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <Eigen/Geometry>
 #include <qapplication.h>
 #include <QKeyEvent>

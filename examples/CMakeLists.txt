@@ -31,19 +31,21 @@ if(SRRG_HBST_HAS_EIGEN)
     #ds smoother example also has GUI utilities - check dependencies
     find_package(QGLViewer QUIET)
     if(QGLVIEWER_FOUND OR QGLVIEWER_INCLUDE_DIR)
-      message("srrg_hbst|found QGLViewer version - building monocular and binocular smoother example code")
-      include_directories(${QGLVIEWER_INCLUDE_DIR})
+      message("srrg_hbst|found QGLViewer version - building smoother example code")
+      include_directories(${QT_INCLUDE_DIRS} ${QGLVIEWER_INCLUDE_DIR})
       
-      #ds monocular smoother example
-      add_executable(smoother_monocular smoother_monocular.cpp)
-      target_link_libraries(smoother_monocular 
-        ${OpenCV_LIBS} 
-        ${QGLVIEWER_LIBRARY} 
-        ${QT_LIBRARIES}
-        -lglut -lGL
-      )
+      #ds monocular smoother example - only opencv3 supported - TODO support for opencv2
+      if ("${OpenCV_MAJOR_VERSION}" STREQUAL "3")
+        add_executable(smoother_monocular smoother_monocular.cpp)
+        target_link_libraries(smoother_monocular 
+          ${OpenCV_LIBS} 
+          ${QGLVIEWER_LIBRARY} 
+          ${QT_LIBRARIES}
+          -lglut -lGL
+        )
+      endif()
       
-      #ds binocular smoother example
+      #ds binocular smoother example - opencv2 and opencv3 supported
       add_executable(smoother_binocular smoother_binocular.cpp)
       target_link_libraries(smoother_binocular 
         ${OpenCV_LIBS} 
