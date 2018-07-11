@@ -413,10 +413,23 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::imshow("current image [OpenCV]", image_display);
     cv::waitKey(1);
 
+//    //ds wait on the first image so the windows can be sized by hand as desired (drag and drop)
+//    if (number_of_processed_images == 0) {
+//      cv::waitKey(0);
+//    }
+//    //ds write image to disk (video creation, make sure that the video folder exists)
+//    char buffer_file_name[32];
+//    std::snprintf(buffer_file_name, 32, "video/input-%04u.jpg", number_of_processed_images);
+//    cv::imwrite(buffer_file_name, image_display);
+
     //ds update viewer
     viewer.addPose(robot_to_camera*estimated_poses[number_of_processed_images]);
     viewer.updateGL();
     ui_server.processEvents();
+
+//    //ds write view to disk  (video creation, make sure that the video folder exists)
+//    viewer.setSnapshotFileName("video/output.jpg");
+//    viewer.saveSnapshot();
 
     //ds compute file name for next image
     ++number_of_processed_images;

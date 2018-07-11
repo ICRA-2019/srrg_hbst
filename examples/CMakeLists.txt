@@ -35,7 +35,7 @@ if(SRRG_HBST_HAS_EIGEN)
       include_directories(${QT_INCLUDE_DIRS} ${QGLVIEWER_INCLUDE_DIR})
       
       #ds monocular smoother example - only opencv3 supported - TODO support for opencv2
-      if ("${OpenCV_MAJOR_VERSION}" STREQUAL "3")
+      if ("${OpenCV_VERSION_MAJOR}" STREQUAL "3")
         add_executable(smoother_monocular smoother_monocular.cpp)
         target_link_libraries(smoother_monocular 
           ${OpenCV_LIBS} 
