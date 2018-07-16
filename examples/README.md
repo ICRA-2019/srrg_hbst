@@ -18,19 +18,19 @@ To visualize the obtained correspondences we link them with our Matchables using
 
 For the individual trees we have an example with indices:
 
-    match_opencv_indices /test_images/
+    match_opencv_indices test_images/
     
 and one using pointers:
     
-    match_opencv_pointers /test_images/
+    match_opencv_pointers test_images/
     
 In the case of the incremental tree check out:
     
-    match_incremental_opencv_pointers  /test_images/
+    match_incremental_opencv_pointers  test_images/
     
 Additionally we provide a straightforward feature tracking application based on HBST:   
   
-    tracker /test_images/
+    tracker test_images/
     
 Note that with this tracking algorithm we can obtain multiple correspondences for image registration or loop closing at no time! <br>
 Again the file paths need to be adjusted or the executables run with `rosrun srrg_hbst`.
