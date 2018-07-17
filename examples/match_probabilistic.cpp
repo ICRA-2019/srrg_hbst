@@ -3,7 +3,6 @@
 #include "srrg_hbst_types_probabilistic/probabilistic_node.hpp"
 
 //ds current setup
-#define MAXIMUM_DISTANCE_HAMMING 25
 #define DESCRIPTOR_SIZE_BITS 256
 typedef srrg_hbst::ProbabilisticMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::ProbabilisticNode<Matchable> Node;
@@ -12,6 +11,8 @@ const double RAND_MAX_AS_DOUBLE = static_cast<double>(RAND_MAX);
 
 //ds dummy descriptor generation
 Tree::MatchableVector getDummyMatchables(const uint64_t& number_of_matchables_);
+
+
 
 int32_t main() {
 

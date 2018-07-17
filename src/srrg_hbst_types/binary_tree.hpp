@@ -30,31 +30,39 @@ public:
     bool spawn_leafs;
   };
 
+  //! @brief image score for a reference image (added)
+  struct Score {
+    uint64_t number_of_matches    = 0;
+    real_type matching_ratio      = 0.0;
+    uint64_t identifier_reference = 0;
+  };
+  typedef std::vector<Score> ScoreVector;
+
 //ds ctor/dtor
 public:
 
   //ds empty tree instantiation
   BinaryTree(): identifier(0),
                 _root(0) {
-    _matchables.clear();
-    _matchables_to_train.clear();
-    _added_identifiers_train.clear();
-    _trainables.clear();
+                _matchables.clear();
+                _matchables_to_train.clear();
+                _added_identifiers_train.clear();
+                _trainables.clear();
   }
 
   //ds empty tree instantiation with specific identifier
   BinaryTree(const uint64_t& identifier_): identifier(identifier_),
                                            _root(0) {
-    _matchables.clear();
-    _matchables_to_train.clear();
-    _added_identifiers_train.clear();
-    _trainables.clear();
+                                           _matchables.clear();
+                                           _matchables_to_train.clear();
+                                           _added_identifiers_train.clear();
+                                           _trainables.clear();
   }
 
   //ds construct tree upon allocation on filtered descriptors
   BinaryTree(const MatchableVector& matchables_,
              const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): identifier(0),
-                                                                     _root(new Node(matchables_, train_mode_)) {
+                                                                                   _root(new Node(matchables_, train_mode_)) {
     _matchables.clear();
     _matchables_to_train.clear();
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
@@ -67,7 +75,7 @@ public:
   BinaryTree(const uint64_t& identifier_,
              const MatchableVector& matchables_,
              const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): identifier(identifier_),
-                                                                     _root(new Node(matchables_, train_mode_)) {
+                                                                                   _root(new Node(matchables_, train_mode_)) {
     _matchables.clear();
     _matchables_to_train.clear();
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
@@ -81,7 +89,7 @@ public:
              const MatchableVector& matchables_,
              Descriptor bit_mask_,
              const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): identifier(identifier_),
-                                                                     _root(new Node(matchables_, bit_mask_, train_mode_)) {
+                                                                                   _root(new Node(matchables_, bit_mask_, train_mode_)) {
     _matchables.clear();
     _matchables_to_train.clear();
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
@@ -132,7 +140,7 @@ protected:
   //! @brief bookkeeping: trainable matchables resulting from last matchAndAdd call
   std::vector<Trainable> _trainables;
 
-//ds access wrappers
+//ds shared pointer access wrappers
 public:
 
   const uint64_t getNumberOfMatches(const std::shared_ptr<const MatchableVector> matchables_query_, const uint32_t& maximum_distance_ = 25) const {
@@ -258,6 +266,61 @@ public:
       }
     }
     return number_of_matches;
+  }
+
+  const ScoreVector getScorePerImageSorted(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    ScoreVector scores_per_image(_added_identifiers_train.size());
+
+    //ds identifier to vector index mapping - simultaneously initialize result vector
+    std::map<uint64_t, uint64_t> indentifier_mapping;
+    for (const uint64_t& identifier_reference: _added_identifiers_train) {
+      scores_per_image[indentifier_mapping.size()].identifier_reference = identifier_reference;
+      indentifier_mapping.insert(std::make_pair(identifier_reference, indentifier_mapping.size()));
+    }
+
+    //ds for each query descriptor
+    for (const Matchable* matchable_query: matchables_query_) {
+
+      //ds traverse tree to find this descriptor
+      const Node* node_current = _root;
+      while (node_current) {
+
+        //ds if this node has leaves (is splittable)
+        if(node_current->has_leafs) {
+
+          //ds check the split bit and go deeper
+          if(matchable_query->descriptor[node_current->index_split_bit]) {
+            node_current = static_cast<const Node*>(node_current->right);
+          } else {
+            node_current = static_cast<const Node*>(node_current->left);
+          }
+        } else {
+
+          //ds check current descriptors for each reference image in this node and exit
+          std::set<uint64_t> matched_references;
+          for (const Matchable* matchable_reference: node_current->matchables) {
+            if (maximum_distance_ > matchable_query->distanceHamming(matchable_reference)) {
+              const uint64_t& identifier_reference = matchable_reference->identifier_reference;
+              if (matched_references.count(identifier_reference) == 0) {
+                ++scores_per_image[indentifier_mapping.at(identifier_reference)].number_of_matches;
+                matched_references.insert(identifier_reference);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    //ds compute relative scores
+    const real_type number_of_query_descriptors = matchables_query_.size();
+    for (Score& score: scores_per_image) {
+      score.matching_ratio = score.number_of_matches/number_of_query_descriptors;
+    }
+
+    //ds sort in descending order by matching ratio
+    std::sort(scores_per_image.begin(), scores_per_image.end(), [](const Score& a, const Score& b){return a.matching_ratio > b.matching_ratio;});
+    return scores_per_image;
   }
 
   const uint64_t getNumberOfMatchesLazy(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
@@ -438,7 +501,7 @@ public:
            const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
 
     //ds store arguments
-    _added_identifiers_train.insert(matchables_.front()->identifier_tree);
+    _added_identifiers_train.insert(matchables_.front()->identifier_reference);
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
 
     //ds train based on set matchables (no effect for do nothing train mode)
@@ -458,7 +521,7 @@ public:
     if (!_root) {
       _root = new Node(matchables_);
       _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
-      _added_identifiers_train.insert(matchables_.front()->identifier_tree);
+      _added_identifiers_train.insert(matchables_.front()->identifier_reference);
       return;
     }
 
@@ -526,12 +589,17 @@ public:
     }
 
     //ds insert identifier of the integrated matchables
-    _added_identifiers_train.insert(matchables_.front()->identifier_tree);
+    _added_identifiers_train.insert(matchables_.front()->identifier_reference);
     _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
   }
 
 
 #ifdef SRRG_HBST_HAS_OPENCV
+
+  //ds returns an ordered vector of image scores
+  const ScoreVector getScorePerImageSorted(const cv::Mat& descriptors_cv_, const uint32_t& maximum_distance_ = 25) const {
+    return getScorePerImageSorted(getMatchablesWithIndex(descriptors_cv_), maximum_distance_);
+  }
 
   //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
   static const MatchableVector getMatchablesWithIndex(const cv::Mat& descriptors_cv_) {
@@ -726,7 +794,7 @@ protected:
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
-      const uint64_t& identifer_tree_reference = matchable_reference->identifier_tree;
+      const uint64_t& identifer_tree_reference = matchable_reference->identifier_reference;
 
       //ds compute the descriptor distance
       const uint32_t distance = matchable_query_->distanceHamming(matchable_reference);

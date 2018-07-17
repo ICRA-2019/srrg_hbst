@@ -28,6 +28,10 @@ In the case of the incremental tree check out:
     
     match_incremental_opencv_pointers  test_images/
     
+Who is interested in only image scores finds a simple example in:
+
+    match_incremental_opencv_score test_images/
+
 Additionally we provide a straightforward feature tracking application based on HBST:   
   
     tracker test_images/

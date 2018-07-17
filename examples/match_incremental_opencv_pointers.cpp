@@ -10,6 +10,13 @@
   #error OpenCV version not supported
 #endif
 
+//ds current setup
+#define DESCRIPTOR_SIZE_BITS 256
+typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
+typedef srrg_hbst::BinaryNode<Matchable>::MatchableVector MatchableVector;
+typedef srrg_hbst::BinaryTree<Node> Tree;
+
 //ds feature handling
 cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
 cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
@@ -19,7 +26,9 @@ std::vector<cv::Mat> images(10);
 std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
-const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
+const MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
+
+
 
 int32_t main(int32_t argc_, char** argv_) {
 
@@ -42,7 +51,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::chrono::time_point<std::chrono::system_clock> time_begin;
   std::chrono::duration<double> duration_construction(0);
   std::chrono::duration<double> duration_query(0);
-  double matching_ratio = 0;
+  double cumulative_matching_ratio = 0;
   const uint32_t maximum_matching_distance = 25;
 
   //ds get test image path
@@ -52,7 +61,7 @@ int32_t main(int32_t argc_, char** argv_) {
   const uint32_t number_of_images = 10;
 
   //ds fill matchables vector for each image
-  std::vector<srrg_hbst::BinaryTree256::MatchableVector> matchables_per_image(number_of_images);
+  std::vector<MatchableVector> matchables_per_image(number_of_images);
   for (uint32_t u = 0; u < number_of_images; ++u) {
 
     //ds load matchables
@@ -65,14 +74,14 @@ int32_t main(int32_t argc_, char** argv_) {
   //ds create HBST for first image
   std::printf("building tree with image [%02u]\n", 0);
   time_begin = std::chrono::system_clock::now();
-  std::shared_ptr<srrg_hbst::BinaryTree256> hbst_tree = std::make_shared<srrg_hbst::BinaryTree256>(0, matchables_per_image[0]);
+  Tree hbst_tree(0, matchables_per_image[0]);
   duration_construction += std::chrono::system_clock::now()-time_begin;
 
   //ds train tree on all subsequent images
   for (uint32_t u = 1; u < number_of_images; ++u) {
     std::printf("training tree with image [%02u]\n", u);
     time_begin = std::chrono::system_clock::now();
-    hbst_tree->add(matchables_per_image[u]);
+    hbst_tree.add(matchables_per_image[u]);
     duration_construction += std::chrono::system_clock::now()-time_begin;
   }
 
@@ -82,16 +91,22 @@ int32_t main(int32_t argc_, char** argv_) {
   for (uint32_t index_query = 0; index_query < number_of_images; ++index_query) {
 
     //ds query HBST with image 1
-    srrg_hbst::BinaryTree256::MatchVectorMap matches;
+    Tree::MatchVectorMap matches;
     time_begin = std::chrono::system_clock::now();
-    hbst_tree->match(matchables_per_image[index_query], matches, maximum_matching_distance);
+    hbst_tree.match(matchables_per_image[index_query], matches, maximum_matching_distance);
     duration_query += std::chrono::system_clock::now()-time_begin;
 
     //ds check all match vectors in the map
     for (uint32_t index_reference = 0; index_reference < number_of_images; ++index_reference) {
-      std::printf("matches for QUERY [%02u] to REFERENCE [%02u]: %4lu (matching ratio: %5.3f)\n", index_query, index_reference, matches.at(index_reference).size(),
-                  static_cast<double>(matches.at(index_reference).size())/matchables_per_image[index_reference].size());
-      matching_ratio += static_cast<double>(matches.at(index_reference).size())/matchables_per_image[index_reference].size();
+
+      //ds compute matching ratio
+      const double matching_ratio = static_cast<double>(matches.at(index_reference).size())/matchables_per_image[index_reference].size();
+
+      //ds check approximate matching ratio
+
+      std::printf("matches for QUERY [%02u] to REFERENCE [%02u]: %4lu (matching ratio: %5.3f)\n",
+                  index_query, index_reference, matches.at(index_reference).size(), matching_ratio);
+      cumulative_matching_ratio += matching_ratio;
 
       //ds show the matching in an image pair
       cv::Mat image_display;
@@ -102,7 +117,7 @@ int32_t main(int32_t argc_, char** argv_) {
       cv::Point2f shift(0, images[index_query].rows);
 
       //ds draw correspondences
-      for (const srrg_hbst::BinaryTree256::Match& match: matches.at(index_reference)) {
+      for (const Tree::Match& match: matches.at(index_reference)) {
 
         //ds directly get the keypoint objects
         const cv::KeyPoint* keypoint_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
@@ -124,9 +139,9 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds statistics summary
   std::cerr << "------------------------------------------------" << std::endl;
-  std::printf("   construction duration (s): %6.4f\n", duration_construction.count());
-  std::printf("  average query duration (s): %6.4f\n", duration_query.count()/number_of_images);
-  std::printf("average query matching ratio: %6.4f\n", matching_ratio/(number_of_images*number_of_images));
+  std::printf("         construction duration (s): %6.4f\n", duration_construction.count());
+  std::printf("average query duration matches (s): %6.4f\n", duration_query.count()/number_of_images);
+  std::printf("      average query matching ratio: %6.4f\n", cumulative_matching_ratio/(number_of_images*number_of_images));
   std::cerr << "------------------------------------------------" << std::endl;
   for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
     for (const cv::KeyPoint* keypoint: keypoints) {
@@ -136,10 +151,10 @@ int32_t main(int32_t argc_, char** argv_) {
   return 0;
 }
 
-const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
+const MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
 
   //ds allocate empty matchable vector
-  srrg_hbst::BinaryTree256::MatchableVector matchables(0);
+  MatchableVector matchables(0);
 
   //ds load image (project root folder)
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
@@ -158,5 +173,5 @@ const srrg_hbst::BinaryTree256::MatchableVector getMatchables(const std::string&
   }
 
   //ds get descriptors to HBST format
-  return srrg_hbst::BinaryTree256::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_], identifier_tree_);
+  return Tree::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_], identifier_tree_);
 }

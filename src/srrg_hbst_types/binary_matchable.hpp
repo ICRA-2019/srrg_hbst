@@ -46,7 +46,7 @@ public:
                   const uint64_t& identifier_tree_ = 0): identifier(identifier_),
                                                          pointer(0),
                                                          descriptor(descriptor_),
-                                                         identifier_tree(identifier_tree_) {}
+                                                         identifier_reference(identifier_tree_) {}
 
   //! @brief constructor with an object pointer for association
   //! @param[in] pointer_ associated object
@@ -57,7 +57,7 @@ public:
                   const uint64_t& identifier_tree_ = 0): identifier(0),
                                                          pointer(pointer_),
                                                          descriptor(descriptor_),
-                                                         identifier_tree(identifier_tree_) {}
+                                                         identifier_reference(identifier_tree_) {}
 
   //! @brief constructor with index and object pointer for association
   //! @param[in] identifier_ association index
@@ -71,7 +71,7 @@ public:
                   const uint64_t& identifier_tree_ = 0): identifier(identifier_),
                                                          pointer(pointer_),
                                                          descriptor(descriptor_),
-                                                         identifier_tree(identifier_tree_) {}
+                                                         identifier_reference(identifier_tree_) {}
 
 //ds wrapped constructors - only available if OpenCV is present on building system
 #ifdef SRRG_HBST_HAS_OPENCV
@@ -149,8 +149,8 @@ public:
   //! @brief descriptor data string vector
   const Descriptor descriptor;
 
-  //! @brief tree reference index to which this matchable is belonging
-  const uint64_t identifier_tree;
+  //! @brief image reference index to which this matchable is belonging
+  const uint64_t identifier_reference;
 };
 
 typedef BinaryMatchable<512> BinaryMatchable512;

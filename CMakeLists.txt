@@ -23,9 +23,11 @@ find_package(Eigen3 QUIET)
 if(Eigen3_FOUND OR EIGEN3_INCLUDE_DIR)
   message("srrg_hbst|found Eigen version: '3' (${EIGEN3_INCLUDE_DIR}) - building Eigen example code")
 
-  #ds enable OpenCV usage for the complete project (wrappers, example code)
+  #ds enable Eigen usage for the complete project (wrappers, example code)
   set(SRRG_HBST_HAS_EIGEN true)
   include_directories(${EIGEN3_INCLUDE_DIR})
+  
+  #ds ADD THIS IN YOUR PROJECT TO BUILD EIGEN DEPENDENT CODE
   add_definitions(-DSRRG_HBST_HAS_EIGEN)
 endif()
 
@@ -37,6 +39,8 @@ if(OpenCV_FOUND)
   #ds enable OpenCV usage for the complete project (wrappers, example code)
   set(SRRG_HBST_HAS_OPENCV true)
   include_directories(${OpenCV_INCLUDE_DIRS})
+  
+  #ds ADD THIS IN YOUR PROJECT TO BUILD EIGEN DEPENDENT CODE
   add_definitions(-DSRRG_HBST_HAS_OPENCV)
 endif()
 

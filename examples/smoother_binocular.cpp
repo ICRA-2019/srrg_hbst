@@ -31,7 +31,12 @@ typedef std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3
 
 
 
-//ds our 'map' object
+//ds map objects
+struct Landmark {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Eigen::Vector3d coordinates_in_world;
+};
+
 struct Framepoint {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Framepoint(const cv::KeyPoint& keypoint_left_,
@@ -43,7 +48,6 @@ struct Framepoint {
                                                              descriptor_left(descriptor_left_),
                                                              descriptor_right(descriptor_right_),
                                                              coordinates_in_camera(coordinates_in_camera_) {}
-  Framepoint() = delete;
 
   //ds measured
   const cv::KeyPoint keypoint_left;
@@ -52,9 +56,10 @@ struct Framepoint {
   const cv::Mat descriptor_right;
 
   //ds computed
-  Framepoint* previous                  = 0;
-  uint32_t track_length                 = 0;
+  Framepoint* previous  = 0;
+  uint32_t track_length = 0;
   Eigen::Vector3d coordinates_in_camera;
+  Landmark* landmark    = 0;
 };
 
 //ds simple trajectory viewer
@@ -64,6 +69,7 @@ public:
   void init();
   virtual void draw();
   void addPose(const Eigen::Isometry3d& pose_) {_poses.push_back(pose_);}
+  void setLandmarks(std::shared_ptr<std::vector<Landmark*> > landmarks_) {_landmarks = landmarks_;}
 
   //ds usable camera
   class StandardCamera: public qglviewer::Camera {
@@ -78,7 +84,9 @@ public:
 
 private:
   IsometryVector _poses;
-  StandardCamera* _camera = 0;
+  std::shared_ptr<std::vector<Landmark*> > _landmarks = 0;
+  StandardCamera* _camera                             = 0;
+  Eigen::Isometry3d _camera_to_robot                  = Eigen::Isometry3d::Identity();
 };
 
 
@@ -153,23 +161,19 @@ int32_t main(int32_t argc_, char** argv_) {
   descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
 #endif
 
-  //ds 'map'
-  std::vector<std::vector<Framepoint*>> framepoints_per_image(0);
+  //ds 'map' gets populated during processing
+  std::shared_ptr<std::vector<Landmark*> > landmarks(std::make_shared<std::vector<Landmark*> >(0));
+  std::vector<std::vector<Framepoint*> > framepoints_per_image(0);
 
   //ds estimated trajectory
-  IsometryVector estimated_poses(1, Eigen::Isometry3d::Identity());
+  IsometryVector estimated_camera_poses(1, Eigen::Isometry3d::Identity());
 
-  //ds initialize viewer
-  QApplication ui_server(argc_, argv_);
-  Viewer viewer;
-  viewer.show();
-  viewer.updateGL();
-
-  //ds transform robot to camera (for visualization purposes only)
-  Eigen::Isometry3d robot_to_camera(Eigen::Isometry3d::Identity());
-  robot_to_camera.linear() << 0,  0,  1,
-                             -1,  0,  0,
-                              0, -1,  0;
+//  //ds initialize viewer
+//  QApplication ui_server(argc_, argv_);
+//  Viewer viewer;
+//  viewer.setLandmarks(landmarks);
+//  viewer.show();
+//  viewer.updateGL();
 
   //ds constant velocity motion model bookkeeping
   Eigen::Isometry3d motion_previous(Eigen::Isometry3d::Identity());
@@ -183,7 +187,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::string file_name_image_current_right = file_name_initial_image_right;
   cv::Mat image_current_left                = cv::imread(file_name_image_current_left, CV_LOAD_IMAGE_GRAYSCALE);
   cv::Mat image_current_right               = cv::imread(file_name_image_current_right, CV_LOAD_IMAGE_GRAYSCALE);
-  while (image_current_left.rows != 0 && image_current_left.cols != 0) {
+  while (image_current_left.rows != 0 && image_current_left.cols != 0 && number_of_processed_images < 100) {
 
 // FEATURE EXTRACTION AND STRUCTURE COMPUTATION ---------------------------------------------------------------------------------------------------------------------------
     //ds detect FAST keypoints
@@ -197,6 +201,7 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::Mat descriptors_right;
     descriptor_extractor->compute(image_current_left, keypoints_left, descriptors_left);
     descriptor_extractor->compute(image_current_right, keypoints_right, descriptors_right);
+    uint32_t number_of_keypoints = keypoints_left.size();
 
     //ds obtain 3D points from rigid stereo
     std::vector<Framepoint*> current_points(getPointsFromStereo(camera_calibration_matrix,
@@ -206,6 +211,7 @@ int32_t main(int32_t argc_, char** argv_) {
                                                                 descriptors_left,
                                                                 descriptors_right,
                                                                 maximum_descriptor_distance));
+    framepoints_per_image.push_back(current_points);
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // HBST FEATURE MATCHING ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -252,6 +258,7 @@ int32_t main(int32_t argc_, char** argv_) {
         if (cv::norm(cv::Mat(current_point->keypoint_left.pt), cv::Mat(previous_point->keypoint_left.pt)) < maximum_keypoint_distance) {
 
           //ds establish track between framepoints
+          current_point->landmark     = previous_point->landmark;
           current_point->previous     = previous_point;
           current_point->track_length = previous_point->track_length+1;
           average_track_length += current_point->track_length;
@@ -269,7 +276,7 @@ int32_t main(int32_t argc_, char** argv_) {
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       std::cerr << "read images: " << file_name_image_current_left << " | " << file_name_image_current_right
-                << " with triangulated points: " << current_points.size()
+                << " with triangulated points: " << current_points.size() << "/" << number_of_keypoints
                 << " inlier tracks: " << number_of_measurements
                 << " average track length: " << average_track_length << std::endl;
 
@@ -277,7 +284,7 @@ int32_t main(int32_t argc_, char** argv_) {
       //ds always use the constant velocity motion model for pose motion guess
       Eigen::Isometry3d previous_to_current = motion_previous;
 
-      //ds initialize LS TODO stereo
+      //ds initialize LS (stereo projective error minimization)
       const uint32_t maximum_number_of_iterations = 100;
       double total_error_squared_previous         = 0;
       const double maximum_error_squared          = 10*10;
@@ -411,17 +418,39 @@ int32_t main(int32_t argc_, char** argv_) {
       std::cerr << "final motion estimate (average squared pixel error: " << total_error_squared_previous/number_of_measurements
                 << ", iterations: " << number_of_iterations << "): \n" << previous_to_current.matrix() << std::endl;
 
-      //ds refine triangulated point positions in current frame based on transform and positions in previous frame
-      for (Framepoint* framepoint: current_points) {
-        framepoint->coordinates_in_camera += previous_to_current*framepoint->previous->coordinates_in_camera;
-        framepoint->coordinates_in_camera /= 2;
-      }
-
       //ds update motion model
       motion_previous = previous_to_current;
 
       //ds update trajectory
-      estimated_poses.push_back(estimated_poses[number_of_processed_images-1]*previous_to_current.inverse());
+      estimated_camera_poses.push_back(estimated_camera_poses[number_of_processed_images-1]*previous_to_current.inverse());
+
+      //ds refine triangulated point positions in current frame based on transform and positions in previous frame
+      uint32_t number_of_created_landmarks = 0;
+      for (Framepoint* framepoint: current_points) {
+        Framepoint* framepoint_iterator                  = framepoint;
+        uint32_t index_pose                              = estimated_camera_poses.size()-1;
+        Eigen::Vector3d coordinates_in_world_accumulated = Eigen::Vector3d::Zero();
+        while(framepoint_iterator) {
+          const Eigen::Isometry3d& camera_to_world = estimated_camera_poses[index_pose];
+          coordinates_in_world_accumulated        += camera_to_world*framepoint_iterator->coordinates_in_camera;
+          --index_pose;
+          framepoint_iterator = framepoint_iterator->previous;
+        }
+
+        //ds if there is no landmark yet (track length 1)
+        if (!framepoint->landmark) {
+
+          //ds create landmark and set it to the minimal track
+          framepoint->landmark           = new Landmark();
+          framepoint->previous->landmark = framepoint->landmark;
+          landmarks->push_back(framepoint->landmark);
+          ++number_of_created_landmarks;
+        }
+
+        //ds update landmark position
+        framepoint->landmark->coordinates_in_world = coordinates_in_world_accumulated/(framepoint->track_length+1);
+      }
+      std::cerr << "created new landmarks: " << number_of_created_landmarks << "/" << current_points.size() << std::endl;
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       //ds draw tracks on image
@@ -434,17 +463,17 @@ int32_t main(int32_t argc_, char** argv_) {
                 << " initial image " << std::endl;
     }
 
-    //ds draw currently detected points
-    for (Framepoint* framepoint: current_points) {
-      cv::circle(image_display, framepoint->keypoint_left.pt, 2, cv::Scalar(255, 0, 0), -1);
-    }
-    cv::imshow("current image", image_display);
-    cv::waitKey(1);
+//    //ds draw currently detected points
+//    for (Framepoint* framepoint: current_points) {
+//      cv::circle(image_display, framepoint->keypoint_left.pt, 2, cv::Scalar(255, 0, 0), -1);
+//    }
+//    cv::imshow("current image", image_display);
+//    cv::waitKey(1);
 
-    //ds update viewer
-    viewer.addPose(robot_to_camera*estimated_poses[number_of_processed_images]);
-    viewer.updateGL();
-    ui_server.processEvents();
+//    //ds update viewer
+//    viewer.addPose(estimated_camera_poses[number_of_processed_images]);
+//    viewer.updateGL();
+//    ui_server.processEvents();
 
     //ds compute file name for next images
     ++number_of_processed_images;
@@ -463,7 +492,10 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << "stopped at image: " << file_name_image_current_left << " - not found" << std::endl;
   std::cerr << "stopped at image: " << file_name_image_current_right << " - not found" << std::endl;
 
-  //ds free remaining structures
+  //ds free map objects
+  for (const Landmark* landmark: *landmarks) {
+    delete landmark;
+  }
   for (const std::vector<Framepoint*>& framepoints: framepoints_per_image) {
     for (const Framepoint* framepoint: framepoints) {
       delete framepoint;
@@ -474,6 +506,12 @@ int32_t main(int32_t argc_, char** argv_) {
 
 void Viewer::init() {
   QGLViewer::init();
+
+  //ds transform robot to camera (for visualization purposes only)
+  _camera_to_robot.linear() << 0,  0,  1,
+                              -1,  0,  0,
+                               0, -1,  0;
+  _poses.clear();
 
   //ds mouse bindings.
   setMouseBinding(Qt::NoModifier, Qt::RightButton, CAMERA, ZOOM);
@@ -504,9 +542,11 @@ void Viewer::draw() {
   glLineWidth(1);
 
   glPushMatrix();
+  glMultMatrixf(_camera_to_robot.cast<float>().data());
   glColor3f(0.0, 0.0, 0.0);
   drawAxis(10);
 
+  //ds draw camera poses in blue
   glBegin(GL_LINES);
   glColor3f(0, 0, 1);
   Eigen::Isometry3d previous_pose(Eigen::Isometry3d::Identity());
@@ -516,6 +556,15 @@ void Viewer::draw() {
     previous_pose = pose;
   }
   glEnd();
+
+  //ds draw points in grey
+  glBegin(GL_POINTS);
+  glColor3f(0.75, 0.75, 0.75);
+  for (const Landmark* landmark: *_landmarks) {
+    glVertex3f(landmark->coordinates_in_world.x(), landmark->coordinates_in_world.y(), landmark->coordinates_in_world.z());
+  }
+  glEnd();
+
   glPopMatrix();
 }
 

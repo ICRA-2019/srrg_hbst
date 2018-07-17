@@ -16,6 +16,9 @@ if(SRRG_HBST_HAS_OPENCV)
   add_executable(match_incremental_opencv_pointers match_incremental_opencv_pointers.cpp)
   target_link_libraries(match_incremental_opencv_pointers ${OpenCV_LIBS})
   
+  add_executable(match_incremental_opencv_score match_incremental_opencv_score.cpp)
+  target_link_libraries(match_incremental_opencv_score ${OpenCV_LIBS})
+  
   add_executable(tracker tracker.cpp)
   target_link_libraries(tracker ${OpenCV_LIBS})
 endif()
