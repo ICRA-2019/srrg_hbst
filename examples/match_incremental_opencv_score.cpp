@@ -79,17 +79,20 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::imshow("detected keypoints with descriptors", image_display);
     cv::waitKey(0);
 
+    //ds obtain matchables for descriptors and image
+    const MatchableVector matchables(Tree::getMatchablesWithIndex(descriptors, index_image));
+
     //ds add descriptors to the tree
     std::printf("\nadding image [%02u] to database (descriptors: %5d) |", index_image, descriptors.rows);
     time_begin = std::chrono::system_clock::now();
-    database.add(descriptors, index_image);
+    database.add(matchables);
     std::chrono::duration<double> duration_construction = std::chrono::system_clock::now()-time_begin;
     std::printf(" duration (s): %6.4f\n", duration_construction.count());
 
     //ds query for matching ratio
     std::printf("matching ratios for image [%02u] |", index_image);
     time_begin = std::chrono::system_clock::now();
-    Tree::ScoreVector image_scores(database.getScorePerImageSorted(descriptors, maximum_matching_distance));
+    Tree::ScoreVector image_scores(database.getScorePerImage(matchables, true, maximum_matching_distance));
     std::chrono::duration<double> duration_query = std::chrono::system_clock::now()-time_begin;
 
     //ds print sorted scores

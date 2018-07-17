@@ -268,7 +268,7 @@ public:
     return number_of_matches;
   }
 
-  const ScoreVector getScorePerImageSorted(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+  const ScoreVector getScorePerImage(const MatchableVector& matchables_query_, const bool sort_output = false, const uint32_t maximum_distance_ = 25) const {
     ScoreVector scores_per_image(_added_identifiers_train.size());
 
     //ds identifier to vector index mapping - simultaneously initialize result vector
@@ -318,8 +318,10 @@ public:
       score.matching_ratio = score.number_of_matches/number_of_query_descriptors;
     }
 
-    //ds sort in descending order by matching ratio
-    std::sort(scores_per_image.begin(), scores_per_image.end(), [](const Score& a, const Score& b){return a.matching_ratio > b.matching_ratio;});
+    //ds if desired, sort in descending order by matching ratio
+    if (sort_output) {
+      std::sort(scores_per_image.begin(), scores_per_image.end(), [](const Score& a, const Score& b){return a.matching_ratio > b.matching_ratio;});
+    }
     return scores_per_image;
   }
 
@@ -597,8 +599,8 @@ public:
 #ifdef SRRG_HBST_HAS_OPENCV
 
   //ds returns an ordered vector of image scores
-  const ScoreVector getScorePerImageSorted(const cv::Mat& descriptors_cv_, const uint32_t& maximum_distance_ = 25) const {
-    return getScorePerImageSorted(getMatchablesWithIndex(descriptors_cv_), maximum_distance_);
+  const ScoreVector getScorePerImage(const cv::Mat& descriptors_cv_, const bool sort_output = false, const uint32_t maximum_distance_ = 25) const {
+    return getScorePerImage(getMatchablesWithIndex(descriptors_cv_), sort_output, maximum_distance_);
   }
 
   //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
