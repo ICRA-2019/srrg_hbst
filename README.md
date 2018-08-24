@@ -51,28 +51,28 @@ Two variants of subclassing are already provided in `src/srrg_hbst_types_probabi
 [Open an issue](https://gitlab.com/srrg-software/srrg_hbst/issues) or contact the maintainer (see package.xml)
 
 ## Related publications
-Please cite our most recent publication when using the HBST library: <br>
+Please cite our most recent article when using the HBST library: <br>
 
-    @article{2018-schlegel-hbst,
-      author        = {Dominik Schlegel and Giorgio Grisetti},
-      title         = {{HBST: A Hamming Distance embedding Binary Search Tree for Visual Place Recognition}},
-      journal       = {CoRR},
-      volume        = {abs/1802.09261},
-      year          = {2018},
-      url           = {http://arxiv.org/abs/1802.09261},
-      archivePrefix = {arXiv},
-      eprint        = {1802.09261}
+    @article{2018-schlegel-hbst, 
+      author  = {D. Schlegel and G. Grisetti}, 
+      journal = {IEEE Robotics and Automation Letters}, 
+      title   = {{HBST: A Hamming Distance Embedding Binary Search Tree for Feature-Based Visual Place Recognition}}, 
+      year    = {2018}, 
+      volume  = {3}, 
+      number  = {4}, 
+      pages   = {3741-3748}
     }
 
-> arXiv 2018 - HBST: A Hamming Distance embedding Binary Search Tree for Visual Place Recognition: https://arxiv.org/abs/1802.09261 (arXiv: 1802.09261)
+> RA-L 2018 'HBST: A Hamming Distance Embedding Binary Search Tree for Feature-Based Visual Place Recognition' https://ieeexplore.ieee.org/document/8411466/ (DOI: 10.1109/LRA.2018.2856542)
 
-    @inproceedings{2016-schlegel-hbst,
-      title        = {Visual localization and loop closing using decision trees and binary features},
-      author       = {Schlegel, Dominik and Grisetti, Giorgio},
-      booktitle    = {Intelligent Robots and Systems (IROS), 2016 IEEE/RSJ International Conference on},
-      pages        = {4616--4623},
-      year         = {2016},
-      organization = {IEEE}
+Prior works:
+
+    @inproceedings{2016-schlegel-hbst, 
+      author    = {D. Schlegel and G. Grisetti}, 
+      booktitle = {2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
+      title     = {Visual localization and loop closing using decision trees and binary features}, 
+      year      = {2016}, 
+      pages     = {4616-4623}, 
     }
-    
-> IROS 2016 - Visual localization and loop closing using decision trees and binary features: http://ieeexplore.ieee.org/document/7759679/ (DOI: 10.1109/IROS.2016.7759679)
+
+> IROS 2016 'Visual localization and loop closing using decision trees and binary features' http://ieeexplore.ieee.org/document/7759679/ (DOI: 10.1109/IROS.2016.7759679)
