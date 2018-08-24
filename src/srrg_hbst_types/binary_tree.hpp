@@ -500,7 +500,7 @@ public:
   //! @param[in] matchables_ new input matchables to integrate into the current tree (transferring the ownership!)
   //! @param[in] train_mode_ train_mode_
   void add(const MatchableVector& matchables_,
-           const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+           const SplittingStrategy& train_mode_ = SplittingStrategy::DoNothing) {
 
     //ds store arguments
     _added_identifiers_train.insert(matchables_.front()->identifier_reference);
@@ -652,8 +652,9 @@ public:
   }
 
   virtual void add(const cv::Mat& matchables_train_,
-                   const uint64_t& identifier_tree_) {
-    add(getMatchablesWithIndex(matchables_train_, identifier_tree_));
+                   const uint64_t& identifier_tree_,
+                   const SplittingStrategy& train_mode_ = SplittingStrategy::DoNothing) {
+    add(getMatchablesWithIndex(matchables_train_, identifier_tree_), train_mode_);
   }
 
   virtual void match(const cv::Mat& matchables_query_,
