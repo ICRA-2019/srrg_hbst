@@ -29,7 +29,7 @@ int32_t main() {
   std::cerr << "growing tree" << std::endl;
   for (uint32_t u = 1; u < 10; ++u) {
     std::cerr << "training on matches of image: " << u << std::endl;
-    hbst_tree.add(matchables_per_image[u]);
+    hbst_tree.add(matchables_per_image[u], srrg_hbst::SplittingStrategy::SplitEven);
   }
   std::cerr << "grown tree" << std::endl;
 

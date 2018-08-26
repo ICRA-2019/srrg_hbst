@@ -33,7 +33,7 @@ public:
   //! @brief image score for a reference image (added)
   struct Score {
     uint64_t number_of_matches    = 0;
-    real_type matching_ratio      = 0.0;
+    real_type matching_ratio      = 0;
     uint64_t identifier_reference = 0;
   };
   typedef std::vector<Score> ScoreVector;
@@ -232,6 +232,9 @@ public:
   }
 
   const uint64_t getNumberOfMatches(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    if (matchables_query_.empty()) {
+      return 0;
+    }
     uint64_t number_of_matches = 0;
 
     //ds for each descriptor
@@ -267,6 +270,9 @@ public:
   }
 
   const ScoreVector getScorePerImage(const MatchableVector& matchables_query_, const bool sort_output = false, const uint32_t maximum_distance_ = 25) const {
+    if (matchables_query_.empty()) {
+      return ScoreVector(0);
+    }
     ScoreVector scores_per_image(_added_identifiers_train.size());
 
     //ds identifier to vector index mapping - simultaneously initialize result vector
@@ -324,6 +330,9 @@ public:
   }
 
   const uint64_t getNumberOfMatchesLazy(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
+    if (matchables_query_.empty()) {
+      return 0;
+    }
     uint64_t number_of_matches = 0;
 
     //ds for each descriptor
@@ -358,6 +367,9 @@ public:
 
   //ds direct matching function on this tree
   virtual void matchLazy(const MatchableVector& matchables_query_, MatchVector& matches_, const uint32_t& maximum_distance_ = 25) const {
+    if (matchables_query_.empty()) {
+      return;
+    }
 
     //ds for each descriptor
     for(const Matchable* matchable_query: matchables_query_) {
@@ -394,6 +406,9 @@ public:
   virtual void match(const MatchableVector& matchables_query_,
                      MatchVector& matches_,
                      const uint32_t& maximum_distance_ = 25) const {
+    if (matchables_query_.empty()) {
+      return;
+    }
 
     //ds for each descriptor
     for(const Matchable* matchable_query: matchables_query_) {
@@ -452,6 +467,9 @@ public:
   virtual void match(const MatchableVector& matchables_query_,
                      MatchVectorMap& matches_,
                      const uint32_t& maximum_distance_matching_ = 25) const {
+    if (matchables_query_.empty()) {
+      return;
+    }
 
     //ds prepare match vector map for all ids in the tree
     matches_.clear();
@@ -499,6 +517,9 @@ public:
   //! @param[in] train_mode_ train_mode_
   void add(const MatchableVector& matchables_,
            const SplittingStrategy& train_mode_ = SplittingStrategy::DoNothing) {
+    if (matchables_.empty()) {
+      return;
+    }
 
     //ds store arguments
     _added_identifiers_train.insert(matchables_.front()->identifier_reference);
@@ -516,6 +537,9 @@ public:
                            MatchVectorMap& matches_,
                            const uint32_t maximum_distance_matching_ = 25,
                            const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+    if (matchables_.empty()) {
+      return;
+    }
 
     //ds check if we have to build an initial tree first
     if (!_root) {

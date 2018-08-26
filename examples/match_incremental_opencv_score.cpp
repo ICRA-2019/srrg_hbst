@@ -85,7 +85,7 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds add descriptors to the tree
     std::printf("\nadding image [%02u] to database (descriptors: %5d) |", index_image, descriptors.rows);
     time_begin = std::chrono::system_clock::now();
-    database.add(matchables);
+    database.add(matchables, srrg_hbst::SplittingStrategy::SplitEven);
     std::chrono::duration<double> duration_construction = std::chrono::system_clock::now()-time_begin;
     std::printf(" duration (s): %6.4f\n", duration_construction.count());
 

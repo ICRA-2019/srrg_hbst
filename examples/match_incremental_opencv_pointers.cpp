@@ -81,7 +81,7 @@ int32_t main(int32_t argc_, char** argv_) {
   for (uint32_t u = 1; u < number_of_images; ++u) {
     std::printf("training tree with image [%02u]\n", u);
     time_begin = std::chrono::system_clock::now();
-    hbst_tree.add(matchables_per_image[u]);
+    hbst_tree.add(matchables_per_image[u], srrg_hbst::SplittingStrategy::SplitEven);
     duration_construction += std::chrono::system_clock::now()-time_begin;
   }
 
