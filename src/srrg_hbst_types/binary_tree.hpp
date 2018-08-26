@@ -173,6 +173,9 @@ public:
   //! @brief train tree with current _trainable_matchables according to selected mode
   //! @param[in] train_mode_ desired training mode
   virtual void train(const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+    if (_matchables_to_train.empty() || train_mode_ == SplittingStrategy::DoNothing) {
+      return;
+    }
 
     //ds if random splitting is chosen
     if (train_mode_ == SplittingStrategy::SplitRandomUniform) {
@@ -180,11 +183,6 @@ public:
       //ds initialize random number generator with new seed
       std::random_device random_device;
       Node::random_number_generator = std::mt19937(random_device());
-    }
-
-    //ds return for no training (redundant call)
-    if (train_mode_ == SplittingStrategy::DoNothing) {
-      return;
     }
 
     //ds check if we have to build an initial tree first (no training afterwards)
