@@ -31,6 +31,12 @@ public:
   //! @brief descriptor size in bytes (for all matchables, size after the number of augmented bits)
   static constexpr uint32_t raw_descriptor_size_bytes = descriptor_size_bits_/8;
 
+  //! @brief descriptor size, bits in whole bytes (corresponds to descriptor_size_bits for a byte-wise descriptor)
+  static constexpr uint32_t descriptor_size_bits_in_bytes = (descriptor_size_bits_/8)*8;
+
+  //! @brief overflowing single bits (normally 0)
+  static constexpr uint32_t descriptor_size_bits_overflow = descriptor_size_bits_-descriptor_size_bits_in_bytes;
+
 //ds ctor/dtor
 public:
 
@@ -125,11 +131,23 @@ public:
       const uint32_t bit_index_start = byte_index*8;
 
       //ds grab a byte and convert it to a bitset so we can access the single bits
-      const std::bitset<8>descriptor_byte(descriptor_cv_.at<uchar>(byte_index));
+      const std::bitset<8> descriptor_byte(descriptor_cv_.at<uchar>(byte_index));
 
       //ds set bitstring
       for (uint8_t v = 0; v < 8; ++v) {
         binary_descriptor[bit_index_start+v] = descriptor_byte[v];
+      }
+    }
+
+    //ds check if we have extra bits (less than 1 byte i.e. <= 7 bits)
+    if (descriptor_size_bits_overflow > 0) {
+
+      //ds get last byte (not fully set)
+      const std::bitset<8> descriptor_byte(descriptor_cv_.at<uchar>(raw_descriptor_size_bytes));
+
+      //ds only set the remaining bits
+      for(uint32_t v = 0; v < descriptor_size_bits_overflow; ++v) {
+        binary_descriptor[descriptor_size_bits_in_bytes+v] = descriptor_byte[8-descriptor_size_bits_overflow+v];
       }
     }
     return binary_descriptor;
