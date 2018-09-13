@@ -467,7 +467,7 @@ public:
   virtual void match(const MatchableVector& matchables_query_,
                      MatchVectorMap& matches_,
                      const uint32_t& maximum_distance_matching_ = 25) const {
-    if (matchables_query_.empty()) {
+    if (matchables_query_.empty() || _added_identifiers_train.empty()) {
       return;
     }
 
