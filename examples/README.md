@@ -1,4 +1,5 @@
     HBST examples
+    
 ## Standalone:
 The following example shows the core functionality provided when using an *individual tree* to describe *each image*:
 
@@ -10,6 +11,7 @@ Alternatively one can build only *a single tree* that is incrementally grown for
     
 Note that the above executables required to be run from the `build` folder or alternatively via `rosrun srrg_hbst`. <br>
 None of the above examples require OpenCV or Eigen.
+
 ## OpenCV:
 The HBST library already shipps with OpenCV2/3 wrappers. <br>
 The following 4 examples demonstrate the descriptor matching performance for a set of 10 test images. <br>
@@ -34,11 +36,15 @@ Who is interested in only image scores finds a simple example in:
 
 Additionally we provide a straightforward feature tracking application based on HBST:   
   
-    tracker test_images/
+    tracker -images test_images/
+    
+Alternatively, the tracker can also process video files:   
+  
+    tracker -video video.mp4
     
 Note that with this tracking algorithm we can obtain multiple correspondences for image registration or loop closing at no time! <br>
 Again the file paths need to be adjusted or the executables run with `rosrun srrg_hbst`.
-    
+
 ## Eigen:
 More robust descriptor track based tree construction can be inspected in:
 
