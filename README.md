@@ -3,11 +3,11 @@ Contributors: Dominik Schlegel, Giorgio Grisetti
 ## [* check out the wiki for videos and experimental results! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 
 Supported platforms:
-- Linux: Ubuntu 14.04, Ubuntu 16.04, Ubuntu 18.04
+- Linux: Ubuntu 14.04 LTS, Ubuntu 16.04 LTS, Ubuntu 18.04 LTS
 
 Minimum requirements:
 - [CMake](https://cmake.org) 2.8.3 or higher
-- [C++ 11](http://en.cppreference.com) STL libraries
+- [C++ 11](http://en.cppreference.com) or higher
 - [GCC](https://gcc.gnu.org) 5 or higher
 
 Optional:

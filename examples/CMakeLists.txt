@@ -21,6 +21,9 @@ if(SRRG_HBST_HAS_OPENCV)
   
   add_executable(tracker tracker.cpp)
   target_link_libraries(tracker ${OpenCV_LIBS})
+  
+    add_executable(recognizer recognizer.cpp)
+  target_link_libraries(recognizer ${OpenCV_LIBS})
 endif()
 
 #ds if we found an eigen installation

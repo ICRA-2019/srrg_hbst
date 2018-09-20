@@ -42,8 +42,14 @@ Alternatively, the tracker can also process video files:
   
     tracker -video video.mp4
     
-Note that with this tracking algorithm we can obtain multiple correspondences for image registration or loop closing at no time! <br>
-Again the file paths need to be adjusted or the executables run with `rosrun srrg_hbst`.
+Note that with this tracking algorithm we can obtain multiple correspondences for image registration or loop closing at no time!
+
+Furthermore we provide a live visual place recognition application:
+
+    recognizer -video video.mp4 -space 100
+    
+Which displays computed features for the current image (blue) and highlights them (green) in case they have been matched against a feature from a database image. <br>
+The parameter `-space` controls the minimum number of images that have to lie between the current image and the database image (e.g. 100).
 
 ## Eigen:
 More robust descriptor track based tree construction can be inspected in:

@@ -32,13 +32,20 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << "--------------------------------------------------------------------------------" << std::endl;
 
   //ds validate input
-  if (argc_ != 3) {
-    std::cerr << "ERROR: invalid call - please use: ./tracker -images </path/to/srrg_hbst/examples/test_images>" << std::endl;
+  if (argc_ != 5) {
+    std::cerr << "ERROR: invalid call - please use: ./recognizer -video </path/to/video.mp4> -space <integer>" << std::endl;
     return 0;
   }
 
   //ds parse image folder/video file
   const std::string input_source = argv_[2];
+
+  //ds matching interspace
+  const uint32_t number_of_images_interspace = std::stoi(argv_[4]);
+  std::cerr << "image interspace: " << number_of_images_interspace << std::endl;
+
+  //ds matching threshold
+  const uint32_t maximum_descriptor_distance = 75;
 
   //ds evaluate desired processing mode
   ProcessingMode processing_mode;
@@ -91,23 +98,17 @@ int32_t main(int32_t argc_, char** argv_) {
   }
 
   //ds feature handling
-  cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
+  cv::Ptr<cv::FeatureDetector> keypoint_detector;
   cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 #if CV_MAJOR_VERSION == 2
-  keypoint_detector    = new cv::FastFeatureDetector();
-  descriptor_extractor = new cv::BriefDescriptorExtractor(32);
+  keypoint_detector    = new cv::ORB(1000);
+  descriptor_extractor = new cv::ORB(1000);
 #elif CV_MAJOR_VERSION == 3
-  keypoint_detector    = cv::FastFeatureDetector::create();
-  descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
+  keypoint_detector    = cv::ORB::create(1000);
+  descriptor_extractor = cv::ORB::create(1000);
 #endif
 
-  //ds keypoint buffer (to keep keypoint information for multiple images)
-  std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(0);
-
-  //ds matching threshold
-  const uint32_t maximum_descriptor_distance = 10;
-
-  //ds instantiate an empty tree
+  //ds instantiate an empty tree and configure it
   Tree tree;
 
   //ds start processing - specializing only image loading depending on chosen parsing mode
@@ -159,14 +160,13 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image, keypoints, descriptors);
 
     //ds allocate keypoints manually in memory (we will directly link to them with our HBST matchables, avoiding any auxiliary bookkeeping)
-    std::vector<const cv::KeyPoint*> dynamic_keypoints(0);
-    for (const cv::KeyPoint& keypoint: keypoints) {
-      dynamic_keypoints.push_back(new cv::KeyPoint(keypoint));
+    std::vector<const cv::KeyPoint*> keypoints_addresses(keypoints.size());
+    for (uint32_t u = 0; u < keypoints.size(); ++u) {
+      keypoints_addresses[u] = &keypoints[u];
     }
-    keypoints_per_image.push_back(dynamic_keypoints);
 
     //ds obtain linked matchables
-    const Tree::MatchableVector matchables(Tree::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, dynamic_keypoints, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_addresses, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far) and integrate them simultaneously
     Tree::MatchVectorMap matches_per_image;
@@ -174,33 +174,32 @@ int32_t main(int32_t argc_, char** argv_) {
     number_of_stored_descriptors += matchables.size();
 
     //ds info
-    std::cerr << "processed images: " << number_of_processed_images << " | total descriptors stored: " << number_of_stored_descriptors
+    std::cerr << "processed image: " << number_of_processed_images << " | total descriptors stored: " << number_of_stored_descriptors
               << " | current fps: " << number_of_processed_images_current_window/duration_current_seconds << std::endl;
     cv::Mat image_display(image);
     cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
 
-    //ds draw current keypoints
-    for (const cv::KeyPoint* keypoint: dynamic_keypoints) {
+    //ds draw current keypoints in blue
+    for (const cv::KeyPoint* keypoint: keypoints_addresses) {
       cv::circle(image_display, keypoint->pt, 2, cv::Scalar(255, 0, 0), -1);
     }
 
     //ds for each match vector (i.e. matching results for each past image) of ALL past images
-    for (uint32_t image_number_reference = 0; image_number_reference < number_of_processed_images; ++image_number_reference) {
+    if (number_of_processed_images > number_of_images_interspace) {
+      for (uint32_t image_number_reference = 0; image_number_reference < number_of_processed_images-number_of_images_interspace; ++image_number_reference) {
 
-      //ds if we have sufficient matches
-      if (matches_per_image[image_number_reference].size() > 100) {
-        std::cerr << "matches from image [" << image_number_reference << "] to image [" << number_of_processed_images << "]: "
-                  <<  matches_per_image[image_number_reference].size()
-                  << " (ratio: " << static_cast<double>(matches_per_image[image_number_reference].size())/dynamic_keypoints.size() << ")" << std::endl;
+        //ds if we have sufficient matches
+        const uint32_t number_of_matches = matches_per_image[image_number_reference].size();
+        const double matching_ratio      = static_cast<double>(number_of_matches)/keypoints.size();
+        if (matching_ratio > 0.1 && number_of_matches > 10) {
+          std::cerr << "matches from image [" << image_number_reference << "] to image [" << number_of_processed_images << "]: "
+                    <<  number_of_matches
+                    << " (ratio: " << matching_ratio << ")" << std::endl;
 
-        //ds draw tracks on image
-        for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-          const cv::KeyPoint* point_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
-          const cv::KeyPoint* point_reference = static_cast<const cv::KeyPoint*>(match.pointer_reference);
-
-          //ds on the fly cutoff kernel
-          if (cv::norm(cv::Mat(point_query->pt), cv::Mat(point_reference->pt)) < 100) {
-            cv::line(image_display, point_query->pt, point_reference->pt, cv::Scalar(rand()%255, rand()%255, rand()%255));
+          //ds draw matched descriptors
+          for (const Tree::Match& match: matches_per_image[image_number_reference]) {
+            const cv::KeyPoint* point_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
+            cv::circle(image_display, point_query->pt, 2, cv::Scalar(0, 255, 0), -1);
           }
         }
       }
@@ -230,22 +229,15 @@ int32_t main(int32_t argc_, char** argv_) {
       break;
     }
 
+    //ds done
+    ++number_of_processed_images;
+    ++number_of_processed_images_current_window;
+
     //ds timing - reset measurement window for every 100 frames
     duration_current_seconds += std::chrono::duration<double>(std::chrono::system_clock::now()-time_begin).count();
     if (number_of_processed_images_current_window > 100) {
       number_of_processed_images_current_window = 0;
       duration_current_seconds                  = 0;
-    }
-
-    //ds done
-    ++number_of_processed_images;
-    ++number_of_processed_images_current_window;
-  }
-
-  //ds free linked structures to matchables (the matchables themselves get freed by the tree)
-  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
-    for (const cv::KeyPoint* keypoint: keypoints) {
-      delete keypoint;
     }
   }
   image_file_paths.clear();
