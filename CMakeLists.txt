@@ -27,7 +27,7 @@ if(Eigen3_FOUND OR EIGEN3_INCLUDE_DIR)
   set(SRRG_HBST_HAS_EIGEN true)
   include_directories(${EIGEN3_INCLUDE_DIR})
   
-  #ds ADD THIS IN YOUR PROJECT TO BUILD EIGEN DEPENDENT CODE
+  #ds ADD THIS IN YOUR PROJECT TO BUILD EIGEN DEPENDENT CODE (HBST is header-only)
   add_definitions(-DSRRG_HBST_HAS_EIGEN)
 endif()
 
@@ -40,8 +40,28 @@ if(OpenCV_FOUND)
   set(SRRG_HBST_HAS_OPENCV true)
   include_directories(${OpenCV_INCLUDE_DIRS})
   
-  #ds ADD THIS IN YOUR PROJECT TO BUILD EIGEN DEPENDENT CODE
+  #ds ADD THIS IN YOUR PROJECT TO BUILD OPENCV DEPENDENT CODE (HBST is header-only)
   add_definitions(-DSRRG_HBST_HAS_OPENCV)
+endif()
+
+#ds check if ROS is present
+if("$ENV{ROS_DISTRO}" STREQUAL "kinetic" OR "$ENV{ROS_DISTRO}" STREQUAL "indigo")
+  message("srrg_hbst|found ROS version: '$ENV{ROS_DISTRO}' - building ROS example nodes")
+  
+  #ds check for required packages
+  find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    sensor_msgs
+    cv_bridge
+    nav_msgs
+    message_filters
+  )
+  
+  #ds enable ROS usage
+  set(SRRG_HBST_HAS_ROS true)
+  
+  #ds ADD THIS IN YOUR PROJECT TO BUILD ROS DEPENDENT CODE (HBST is header-only)
+  add_definitions(-DSRRG_HBST_HAS_ROS)
 endif()
 
 #ds define the catkin package

@@ -87,3 +87,12 @@ The features 3D point positions are obtained from stereopsis, defined by a rigid
 Based on the 3D camera positions and the measured 2D image positions of the features we refine the motion guess using a Stereo Projective ICP approach. <br>
 The system experiences tolerable drift, resulting from the dead reckoning motion estimation scheme. <br>
 The scale is estimated correctly thanks to the available rigid stereo triangulation (assuming a majority of correct triangulation pairs).
+
+### ROS (in combination with catkin)
+We provide our example applications also in the form of ROS nodes, enabling easy integration.
+The available nodes are:
+
+    rosun srrg_hbst recognizer_node -camera <ROS/camera/topic> -space <integer>
+    
+The ROS `recognizer_node` is fully interactive, hence by pressing [C] you can reset the HBST database at any time! <br>
+To obtain a camera image stream on your machine (i.e. `<ROS/camera/topic>`) you can use a regular ROS camera driver node such as [usb_cam](http://wiki.ros.org/usb_cam)

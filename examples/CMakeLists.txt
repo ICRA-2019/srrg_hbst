@@ -62,3 +62,10 @@ if(SRRG_HBST_HAS_EIGEN)
     endif()
   endif()
 endif()
+
+#ds if we found a ROS installation
+if(SRRG_HBST_HAS_ROS AND SRRG_HBST_HAS_OPENCV)
+  add_executable(recognizer_node recognizer_node.cpp)
+  target_link_libraries(recognizer_node ${OpenCV_LIBS} ${catkin_LIBRARIES})
+endif()
+
