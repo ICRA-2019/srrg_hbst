@@ -42,9 +42,8 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_);
 int32_t main(int32_t argc_, char** argv_) {
   std::cerr << "--------------------------------------------------------------------------------" << std::endl;
   std::cerr << "CONTROLS: press [0] / [+] to shrink / grow the displayed image" << std::endl;
-  std::cerr << "          press any key (except [ESC] and [SPACE]) to start processing" << std::endl;
   std::cerr << "          press [ESC] to terminate processing" << std::endl;
-  std::cerr << "          press [SPACE] for stepwise processing" << std::endl;
+  std::cerr << "          press [C] for clean the current HBST database" << std::endl;
   std::cerr << "--------------------------------------------------------------------------------" << std::endl;
 
   //ds validate input
