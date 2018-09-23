@@ -63,7 +63,8 @@ Please cite our most recent article when using the HBST library: <br>
       pages   = {3741-3748}
     }
 
-> RA-L 2018 'HBST: A Hamming Distance Embedding Binary Search Tree for Feature-Based Visual Place Recognition' https://ieeexplore.ieee.org/document/8411466/ (DOI: 10.1109/LRA.2018.2856542)
+> RA-L 2018 'HBST: A Hamming Distance Embedding Binary Search Tree for Feature-Based Visual Place Recognition' <br>
+> https://ieeexplore.ieee.org/document/8411466/ (DOI: 10.1109/LRA.2018.2856542)
 
 Prior works:
 
@@ -75,4 +76,5 @@ Prior works:
       pages     = {4616-4623}, 
     }
 
-> IROS 2016 'Visual localization and loop closing using decision trees and binary features' http://ieeexplore.ieee.org/document/7759679/ (DOI: 10.1109/IROS.2016.7759679)
+> IROS 2016 'Visual localization and loop closing using decision trees and binary features' <br>
+> http://ieeexplore.ieee.org/document/7759679/ (DOI: 10.1109/IROS.2016.7759679)
