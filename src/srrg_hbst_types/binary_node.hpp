@@ -1,5 +1,4 @@
 #pragma once
-#include <vector>
 #include <cmath>
 #include <random>
 #include "binary_match.hpp"

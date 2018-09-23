@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <bitset>
+#include <vector>
+#include <map>
 #include <assert.h>
 
 //ds if opencv is present on building system

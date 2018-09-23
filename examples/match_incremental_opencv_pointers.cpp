@@ -18,7 +18,7 @@ typedef srrg_hbst::BinaryNode<Matchable>::MatchableVector MatchableVector;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds feature handling
-cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
+cv::Ptr<cv::FeatureDetector> keypoint_detector;
 cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
 //ds buffers
@@ -41,10 +41,10 @@ int32_t main(int32_t argc_, char** argv_) {
   //ds feature handling
 #if CV_MAJOR_VERSION == 2
   keypoint_detector    = new cv::FastFeatureDetector();
-  descriptor_extractor = new cv::BriefDescriptorExtractor(32);
+  descriptor_extractor = new cv::ORB();
 #elif CV_MAJOR_VERSION == 3
   keypoint_detector    = cv::FastFeatureDetector::create();
-  descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
+  descriptor_extractor = cv::ORB::create();
 #endif
 
   //ds measurements

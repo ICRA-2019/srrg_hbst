@@ -151,14 +151,12 @@ int32_t main(int32_t argc_, char** argv_) {
   const uint32_t maximum_keypoint_distance   = 50; //ds pixels
 
   //ds feature handling
-  cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
-  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 #if CV_MAJOR_VERSION == 2
-  keypoint_detector    = new cv::FastFeatureDetector(25);
-  descriptor_extractor = new cv::BriefDescriptorExtractor(32);
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = new cv::FastFeatureDetector(25);
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = new cv::ORB();
 #elif CV_MAJOR_VERSION == 3
-  keypoint_detector    = cv::FastFeatureDetector::create(25);
-  descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = cv::FastFeatureDetector::create(25);
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::ORB::create();
 #endif
 
   //ds 'map' gets populated during processing

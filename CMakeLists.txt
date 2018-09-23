@@ -44,21 +44,8 @@ if(Eigen3_FOUND OR EIGEN3_INCLUDE_DIR)
   add_definitions(-DSRRG_HBST_HAS_EIGEN)
 endif()
 
-#ds check if opencv is present
-find_package(OpenCV QUIET)
-if(OpenCV_FOUND)
-  message("srrg_hbst|found OpenCV version: '${OpenCV_VERSION}' (${OpenCV_DIR}) - building OpenCV example code")
-  
-  #ds enable OpenCV usage for the complete project (wrappers, example code)
-  set(SRRG_HBST_HAS_OPENCV true)
-  include_directories(${OpenCV_INCLUDE_DIRS})
-  
-  #ds ADD THIS IN YOUR PROJECT TO BUILD OPENCV DEPENDENT CODE (HBST is header-only)
-  add_definitions(-DSRRG_HBST_HAS_OPENCV)
-endif()
-
 #ds check if ROS is present
-if("$ENV{ROS_DISTRO}" STREQUAL "kinetic" OR "$ENV{ROS_DISTRO}" STREQUAL "indigo")
+if("$ENV{ROS_DISTRO}" STREQUAL "kinetic" OR "$ENV{ROS_DISTRO}" STREQUAL "indigo" OR "$ENV{ROS_DISTRO}" STREQUAL "melodic")
   message("srrg_hbst|found ROS version: '$ENV{ROS_DISTRO}' - building ROS example nodes")
   
   #ds check for required packages
@@ -66,15 +53,34 @@ if("$ENV{ROS_DISTRO}" STREQUAL "kinetic" OR "$ENV{ROS_DISTRO}" STREQUAL "indigo"
     roscpp
     sensor_msgs
     cv_bridge
-    nav_msgs
-    message_filters
+    image_geometry
   )
   
+  #ds switch to ROS opencv libraries without calling find_package to avoid conflicts with other existing OpenCV installations
+  set(OpenCV_DIR "ROS")
+  set(OpenCV_FOUND true)
+  set(OpenCV_LIBS ${catkin_LIBRARIES})
+
   #ds enable ROS usage
   set(SRRG_HBST_HAS_ROS true)
   
   #ds ADD THIS IN YOUR PROJECT TO BUILD ROS DEPENDENT CODE (HBST is header-only)
   add_definitions(-DSRRG_HBST_HAS_ROS)
+endif()
+
+#ds if opencv is not set yet
+if(NOT OpenCV_FOUND)
+  find_package(OpenCV QUIET)
+endif()
+if(OpenCV_FOUND)
+  message("srrg_hbst|found OpenCV version: '${OpenCV_VERSION}' (${OpenCV_DIR}) - building OpenCV example code")
+
+  #ds enable OpenCV usage for the complete project (wrappers, example code)
+  set(SRRG_HBST_HAS_OPENCV true)
+  include_directories(${OpenCV_INCLUDE_DIRS})
+
+  #ds ADD THIS IN YOUR PROJECT TO BUILD OPENCV DEPENDENT CODE (HBST is header-only)
+  add_definitions(-DSRRG_HBST_HAS_OPENCV)
 endif()
 
 #ds define the catkin package

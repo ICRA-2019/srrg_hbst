@@ -91,14 +91,12 @@ int32_t main(int32_t argc_, char** argv_) {
   }
 
   //ds feature handling
-  cv::Ptr<cv::FastFeatureDetector> keypoint_detector;
-  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 #if CV_MAJOR_VERSION == 2
-  keypoint_detector    = new cv::FastFeatureDetector();
-  descriptor_extractor = new cv::BriefDescriptorExtractor(32);
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = new cv::FastFeatureDetector();
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = new cv::ORB();
 #elif CV_MAJOR_VERSION == 3
-  keypoint_detector    = cv::FastFeatureDetector::create();
-  descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = cv::FastFeatureDetector::create();
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::ORB::create(0);
 #endif
 
   //ds keypoint buffer (to keep keypoint information for multiple images)

@@ -13,15 +13,8 @@
 using namespace srrg_hbst;
 
 //ds feature handling
-#if CV_MAJOR_VERSION == 2
-cv::FeatureDetector* keypoint_detector                 = new cv::FastFeatureDetector();
-const cv::DescriptorExtractor* descriptor_extractor   = new cv::BriefDescriptorExtractor(32);
-#elif CV_MAJOR_VERSION == 3
-cv::Ptr<cv::FastFeatureDetector> keypoint_detector     = cv::FastFeatureDetector::create();
-cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::xfeatures2d::BriefDescriptorExtractor::create(32);
-#else
-#error OpenCV version not supported
-#endif
+cv::Ptr<cv::FeatureDetector> keypoint_detector;
+cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
 //ds visualization buffers
 std::vector<cv::Mat> images(10);
@@ -41,6 +34,15 @@ int32_t main(int32_t argc, char** argv) {
     std::cerr << "invalid call - please use: ./srrg_hbst_search_opencv_indices /path/to/srrg_hbst/examples/test_images" << std::endl;
     return 0;
   }
+
+  //ds initialize feature handling
+#if CV_MAJOR_VERSION == 2
+  keypoint_detector    = new cv::FastFeatureDetector();
+  descriptor_extractor = new cv::ORB();
+#elif CV_MAJOR_VERSION == 3
+  keypoint_detector    = cv::FastFeatureDetector::create();
+  descriptor_extractor = cv::ORB::create();
+#endif
 
   //ds measurements
   std::chrono::time_point<std::chrono::system_clock> time_begin;
