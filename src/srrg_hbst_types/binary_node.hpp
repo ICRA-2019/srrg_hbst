@@ -194,6 +194,8 @@ public:
       //ds success
       return true;
     } else {
+
+      //ds failed to spawn leaf - terminate recursion
       return false;
     }
   }

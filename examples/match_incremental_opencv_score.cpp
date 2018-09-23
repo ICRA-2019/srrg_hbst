@@ -45,7 +45,8 @@ int32_t main(int32_t argc_, char** argv_) {
   const std::string test_images_folder = argv_[1];
 
   //ds number of test images
-  const uint32_t number_of_images = 10;
+  const uint32_t number_of_images       = 10;
+  uint64_t number_of_stored_descriptors = 0;
 
   //ds our HBST database
   Tree database;
@@ -68,26 +69,9 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::Mat descriptors;
     descriptor_extractor->compute(image, keypoints, descriptors);
 
-    //ds show the matching in an image pair
-    cv::Mat image_display;
-    cv::cvtColor(image, image_display, CV_GRAY2RGB);
-
-    //ds draw query point in lower image
-    for (const cv::KeyPoint& keypoint: keypoints) {
-      cv::circle(image_display, keypoint.pt, 2, cv::Scalar(0, 0, 255));
-    }
-    cv::imshow("detected keypoints with descriptors", image_display);
-    cv::waitKey(0);
-
     //ds obtain matchables for descriptors and image
     const MatchableVector matchables(Tree::getMatchablesWithIndex(descriptors, index_image));
-
-    //ds add descriptors to the tree
-    std::printf("\nadding image [%02u] to database (descriptors: %5d) |", index_image, descriptors.rows);
-    time_begin = std::chrono::system_clock::now();
-    database.add(matchables, srrg_hbst::SplittingStrategy::SplitEven);
-    std::chrono::duration<double> duration_construction = std::chrono::system_clock::now()-time_begin;
-    std::printf(" duration (s): %6.4f\n", duration_construction.count());
+    number_of_stored_descriptors += matchables.size();
 
     //ds query for matching ratio
     std::printf("matching ratios for image [%02u] |", index_image);
@@ -103,6 +87,25 @@ int32_t main(int32_t argc_, char** argv_) {
                   index_image, score.identifier_reference, score.matching_ratio, score.number_of_matches);
     }
     std::cerr << "------------------------------------------------" << std::endl;
+
+    //ds show the matching in an image pair
+    cv::Mat image_display;
+    cv::cvtColor(image, image_display, CV_GRAY2RGB);
+
+    //ds draw query point in lower image
+    for (const cv::KeyPoint& keypoint: keypoints) {
+      cv::circle(image_display, keypoint.pt, 2, cv::Scalar(0, 0, 255));
+    }
+    cv::imshow("detected keypoints with descriptors", image_display);
+    cv::waitKey(0);
+
+    //ds add descriptors to the tree
+    std::printf("adding image [%02u] to database (descriptors: %5d) | total descriptors stored: %lu |",
+                index_image, descriptors.rows, number_of_stored_descriptors);
+    time_begin = std::chrono::system_clock::now();
+    database.add(matchables, srrg_hbst::SplittingStrategy::SplitEven);
+    std::chrono::duration<double> duration_construction = std::chrono::system_clock::now()-time_begin;
+    std::printf(" duration (s): %6.4f\n", duration_construction.count());
   }
   return 0;
 }

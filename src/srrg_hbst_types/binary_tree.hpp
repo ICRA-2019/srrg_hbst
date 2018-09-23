@@ -23,11 +23,19 @@ public:
   typedef std::map<uint64_t, std::vector<Match>> MatchVectorMap;
   typedef std::pair<uint64_t, std::vector<Match>> MatchVectorMapElement;
 
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief component object used for matchable merging
+  struct Mergable {
+    const Matchable* query = nullptr; //to be absorbed
+    Matchable* reference   = nullptr; //absorbing
+  };
+#endif
+
   //! @brief component object used for tree training
   struct Trainable {
-    Node* node;
-    const Matchable* matchable;
-    bool spawn_leafs;
+    Node* node                 = 0;
+    const Matchable* matchable = nullptr;
+    bool spawn_leafs           = false;
   };
 
   //! @brief image score for a reference image (added)
@@ -41,35 +49,20 @@ public:
 //ds ctor/dtor
 public:
 
-  //ds empty tree instantiation
-  BinaryTree(): identifier(0),
-                _root(0) {
-                _matchables.clear();
-                _matchables_to_train.clear();
-                _added_identifiers_train.clear();
-                _trainables.clear();
-  }
-
   //ds empty tree instantiation with specific identifier
   BinaryTree(const uint64_t& identifier_): identifier(identifier_),
                                            _root(0) {
-                                           _matchables.clear();
-                                           _matchables_to_train.clear();
-                                           _added_identifiers_train.clear();
-                                           _trainables.clear();
+   _matchables.clear();
+   _matchables_to_train.clear();
+   _added_identifiers_train.clear();
+   _trainables.clear();
+#ifdef SRRG_MERGE_DESCRIPTORS
+    _mergables.clear();
+#endif
   }
 
-  //ds construct tree upon allocation on filtered descriptors
-  BinaryTree(const MatchableVector& matchables_,
-             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): identifier(0),
-                                                                                   _root(new Node(matchables_, train_mode_)) {
-    _matchables.clear();
-    _matchables_to_train.clear();
-    _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
-    _added_identifiers_train.clear();
-    _added_identifiers_train.insert(identifier);
-    _trainables.clear();
-  }
+  //ds empty tree instantiation
+  BinaryTree(): BinaryTree(0) {}
 
   //ds construct tree upon allocation on filtered descriptors
   BinaryTree(const uint64_t& identifier_,
@@ -82,7 +75,14 @@ public:
     _added_identifiers_train.clear();
     _added_identifiers_train.insert(identifier);
     _trainables.clear();
+#ifdef SRRG_MERGE_DESCRIPTORS
+    _mergables.clear();
+#endif
   }
+
+  //ds construct tree upon allocation on filtered descriptors
+  BinaryTree(const MatchableVector& matchables_,
+             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): BinaryTree(0, matchables_, train_mode_) {}
 
   //ds construct tree upon allocation on filtered descriptors: with bit mask
   BinaryTree(const uint64_t& identifier_,
@@ -96,6 +96,9 @@ public:
     _added_identifiers_train.clear();
     _added_identifiers_train.insert(identifier);
     _trainables.clear();
+#ifdef SRRG_MERGE_DESCRIPTORS
+    _mergables.clear();
+#endif
   }
 
 #ifdef SRRG_HBST_HAS_OPENCV
@@ -128,7 +131,7 @@ public:
 protected:
 
   //! @brief root node (e.g. starting point for similarity search)
-  Node* _root = 0;
+  Node* _root = nullptr;
 
   //! @brief bookkeeping: all matchables contained in the tree
   MatchableVector _matchables;
@@ -139,6 +142,11 @@ protected:
 
   //! @brief bookkeeping: trainable matchables resulting from last matchAndAdd call
   std::vector<Trainable> _trainables;
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief bookkeeping: mergable matchables resulting from last matchAndAdd call
+  std::vector<Mergable> _mergables;
+#endif
 
 //ds shared pointer access wrappers
 public:
@@ -170,67 +178,6 @@ public:
 //ds access
 public:
 
-  //! @brief train tree with current _trainable_matchables according to selected mode
-  //! @param[in] train_mode_ desired training mode
-  virtual void train(const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
-    if (_matchables_to_train.empty() || train_mode_ == SplittingStrategy::DoNothing) {
-      return;
-    }
-
-    //ds if random splitting is chosen
-    if (train_mode_ == SplittingStrategy::SplitRandomUniform) {
-
-      //ds initialize random number generator with new seed
-      std::random_device random_device;
-      Node::random_number_generator = std::mt19937(random_device());
-    }
-
-    //ds check if we have to build an initial tree first (no training afterwards)
-    if (!_root) {
-       _root = new Node(_matchables_to_train, train_mode_);
-      _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
-      _matchables_to_train.clear();
-      return;
-    }
-
-    //ds nodes to update after the addition of matchables to leafs
-    std::set<Node*> nodes_to_update;
-
-    //ds for each new descriptor
-    for (const Matchable* matchable_to_insert: _matchables_to_train) {
-
-      //ds traverse tree to find a leaf for this descriptor
-      Node* node = _root;
-      while (node) {
-
-        //ds if this node has leaves (is splittable)
-        if (node->has_leafs) {
-
-          //ds check the split bit and go deeper
-          if (matchable_to_insert->descriptor[node->index_split_bit]) {
-            node = static_cast<Node*>(node->right);
-          } else {
-            node = static_cast<Node*>(node->left);
-          }
-        } else {
-
-          //ds place the descriptor into the leaf
-          node->matchables.push_back(matchable_to_insert);
-          nodes_to_update.insert(node);
-          break;
-        }
-      }
-    }
-
-    //ds spawn leaves if requested
-    for (Node* node: nodes_to_update) {
-      if (node->spawnLeafs(train_mode_)) {
-      }
-    }
-    _matchables.insert(_matchables.end(), _matchables_to_train.begin(), _matchables_to_train.end());
-    _matchables_to_train.clear();
-  }
-
   const uint64_t getNumberOfMatches(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
     if (matchables_query_.empty()) {
       return 0;
@@ -257,7 +204,7 @@ public:
 
           //ds check current descriptors in this node and exit
           for (const Matchable* matchable_reference: node_current->matchables) {
-            if (maximum_distance_ > matchable_query->distanceHamming(matchable_reference)) {
+            if (maximum_distance_ > matchable_query->distance(matchable_reference)) {
               ++number_of_matches;
               break;
             }
@@ -276,10 +223,10 @@ public:
     ScoreVector scores_per_image(_added_identifiers_train.size());
 
     //ds identifier to vector index mapping - simultaneously initialize result vector
-    std::map<uint64_t, uint64_t> indentifier_mapping;
+    std::map<uint64_t, uint64_t> mapping_identifier_image_to_score;
     for (const uint64_t& identifier_reference: _added_identifiers_train) {
-      scores_per_image[indentifier_mapping.size()].identifier_reference = identifier_reference;
-      indentifier_mapping.insert(std::make_pair(identifier_reference, indentifier_mapping.size()));
+      scores_per_image[mapping_identifier_image_to_score.size()].identifier_reference = identifier_reference;
+      mapping_identifier_image_to_score.insert(std::make_pair(identifier_reference, mapping_identifier_image_to_score.size()));
     }
 
     //ds for each query descriptor
@@ -303,11 +250,14 @@ public:
           //ds check current descriptors for each reference image in this node and exit
           std::set<uint64_t> matched_references;
           for (const Matchable* matchable_reference: node_current->matchables) {
-            if (maximum_distance_ > matchable_query->distanceHamming(matchable_reference)) {
-              const uint64_t& identifier_reference = matchable_reference->identifier_reference;
-              if (matched_references.count(identifier_reference) == 0) {
-                ++scores_per_image[indentifier_mapping.at(identifier_reference)].number_of_matches;
-                matched_references.insert(identifier_reference);
+            if (maximum_distance_ > matchable_query->distance(matchable_reference)) {
+              for(const uint64_t& identifier_reference: matchable_reference->identifiers_image) {
+
+                //ds the query matchable can be matched only once to each reference image
+                if (matched_references.count(identifier_reference) == 0) {
+                  ++scores_per_image[mapping_identifier_image_to_score.at(identifier_reference)].number_of_matches;
+                  matched_references.insert(identifier_reference);
+                }
               }
             }
           }
@@ -355,7 +305,7 @@ public:
         else
         {
           //ds check current descriptors in this node and exit
-          if(maximum_distance_ > matchable_query->distanceHamming(node_current->matchables.front())) {
+          if(maximum_distance_ > matchable_query->distance(node_current->matchables.front())) {
             ++number_of_matches;
           }
           break;
@@ -391,8 +341,15 @@ public:
 
           //ds check current descriptors in this node and exit
           for (const Matchable* matchable_reference: node_current->matchables) {
-            if (maximum_distance_ > matchable_query->distanceHamming(matchable_reference)) {
-              matches_.push_back(Match(matchable_query, matchable_reference, maximum_distance_));
+            const real_type distance = matchable_query->distance(matchable_reference);
+            if (distance < maximum_distance_) {
+              matches_.push_back(Match(matchable_query,
+                                       matchable_reference,
+                                       matchable_query->identifiers.at(0),
+                                       matchable_reference->identifiers.at(0),
+                                       matchable_query->pointers.at(0),
+                                       matchable_reference->pointers.at(0),
+                                       distance));
               break;
             }
           }
@@ -429,12 +386,12 @@ public:
         } else {
 
           //ds current best (0 if none)
-          const Matchable* matchable_reference_best = 0;
+          const Matchable* matchable_reference_best = nullptr;
           uint32_t distance_best                    = maximum_distance_;
 
           //ds check current descriptors in this node and exit
           for (const Matchable* matchable_reference: node_current->matchables) {
-            const uint32_t& distance = matchable_query->distanceHamming(matchable_reference);
+            const uint32_t& distance = matchable_query->distance(matchable_reference);
             if (distance < distance_best) {
               matchable_reference_best = matchable_reference;
               distance_best = distance;
@@ -443,7 +400,13 @@ public:
 
           //ds if a match was found
           if (matchable_reference_best) {
-            matches_.push_back(Match(matchable_query, matchable_reference_best, maximum_distance_));
+            matches_.push_back(Match(matchable_query,
+                                     matchable_reference_best,
+                                     matchable_query->identifiers.at(0),
+                                     matchable_reference_best->identifiers.at(0),
+                                     matchable_query->pointers.at(0),
+                                     matchable_reference_best->pointers.at(0),
+                                     distance_best));
           }
           break;
         }
@@ -522,11 +485,100 @@ public:
     }
 
     //ds store arguments
-    _added_identifiers_train.insert(matchables_.front()->identifier_reference);
+    _added_identifiers_train.insert(matchables_.front()->identifiers_image[0]);
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
 
     //ds train based on set matchables (no effect for do nothing train mode)
     train(train_mode_);
+  }
+
+
+  //! @brief train tree with current _trainable_matchables according to selected mode
+  //! @param[in] train_mode_ desired training mode
+  virtual void train(const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+    if (_matchables_to_train.empty() || train_mode_ == SplittingStrategy::DoNothing) {
+      return;
+    }
+
+    //ds if random splitting is chosen
+    if (train_mode_ == SplittingStrategy::SplitRandomUniform) {
+
+      //ds initialize random number generator with new seed
+      std::random_device random_device;
+      Node::random_number_generator = std::mt19937(random_device());
+    }
+
+    //ds check if we have to build an initial tree first (no training afterwards)
+    if (!_root) {
+       _root = new Node(_matchables_to_train, train_mode_);
+      _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
+      _matchables_to_train.clear();
+      return;
+    }
+
+    //ds nodes to update after the addition of matchables to leafs
+    std::set<Node*> nodes_to_update;
+
+    //ds for each new descriptor - buffering new matchables and merging identical ones
+    uint64_t index_new_matchable = 0;
+    for (uint64_t index_matchable = 0; index_matchable < _matchables_to_train.size(); ++index_matchable) {
+      const Matchable* matchable_to_insert = _matchables_to_train[index_matchable];
+
+      //ds traverse tree to find a leaf for this descriptor
+      Node* node = _root;
+      while (node) {
+
+        //ds if this node has leaves (is splittable)
+        if (node->has_leafs) {
+
+          //ds check the split bit and go deeper
+          if (matchable_to_insert->descriptor[node->index_split_bit]) {
+            node = static_cast<Node*>(node->right);
+          } else {
+            node = static_cast<Node*>(node->left);
+          }
+        } else {
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+          //ds check if we can absorb this matchable
+          bool insertion_required = true;
+          for (const Matchable* matchable_reference: node->matchables) {
+            if (matchable_reference->distance(matchable_to_insert) == 0) {
+
+              //ds absorb the matchable on the spot - bare with me
+              Matchable* merger = const_cast<Matchable*>(matchable_reference);
+              merger->merge(matchable_to_insert);
+              delete matchable_to_insert;
+              insertion_required = false;
+              break;
+            }
+          }
+
+          //ds if required - place the descriptor into the leaf on the spot
+          if (insertion_required) {
+#endif
+            node->matchables.push_back(matchable_to_insert);
+            nodes_to_update.insert(node);
+            _matchables_to_train[index_new_matchable] = matchable_to_insert;
+            ++index_new_matchable;
+#ifdef SRRG_MERGE_DESCRIPTORS
+          }
+#endif
+          break;
+        }
+      }
+    }
+    _matchables_to_train.resize(index_new_matchable);
+
+    //ds spawn leaves if requested
+    for (Node* node: nodes_to_update) {
+      if (node->spawnLeafs(train_mode_)) {
+      }
+    }
+
+    //ds bookkeeping
+    _matchables.insert(_matchables.end(), _matchables_to_train.begin(), _matchables_to_train.end());
+    _matchables_to_train.clear();
   }
 
   //! @brief knn multi-matching function with simultaneous adding
@@ -540,12 +592,13 @@ public:
     if (matchables_.empty()) {
       return;
     }
+    const uint64_t identifier_image_query = matchables_.front()->identifiers_image[0];
 
     //ds check if we have to build an initial tree first
     if (!_root) {
       _root = new Node(matchables_);
       _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
-      _added_identifiers_train.insert(matchables_.front()->identifier_reference);
+      _added_identifiers_train.insert(identifier_image_query);
       return;
     }
 
@@ -561,10 +614,15 @@ public:
     //ds prepare node/matchable list to integrate
     _trainables.resize(matchables_.size());
 
+#ifdef SRRG_MERGE_DESCRIPTORS
+    //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
+    _mergables.resize(matchables_.size());
+    uint64_t index_mergable  = 0;
+#endif
+
     //ds for each descriptor
-    for(uint64_t index_trainable = 0; index_trainable < _trainables.size(); ++index_trainable) {
-      const Matchable* matchable_query  = matchables_[index_trainable];
-      _trainables[index_trainable].node = 0;
+    uint64_t index_trainable = 0;
+    for(const Matchable* matchable_query: matchables_) {
 
       //ds traverse tree to find this descriptor
       Node* node_current = _root;
@@ -581,40 +639,78 @@ public:
           }
         } else {
 
-          //ds obtain best matches in the current leaf via brute-force search
+          //ds obtain best matches in the current leaf via brute-force search - bookkeeping matches to merge (distance == 0)
           std::map<uint64_t, Match> best_matches;
+#ifdef SRRG_MERGE_DESCRIPTORS
+          Matchable* matchable_reference = nullptr;
+          _matchExhaustive(matchable_query, node_current->matchables, maximum_distance_matching_, best_matches, matchable_reference);
+#else
           _matchExhaustive(matchable_query, node_current->matchables, maximum_distance_matching_, best_matches);
+#endif
 
           //ds register all matches in the output structure
           for (const std::pair<uint64_t, Match> best_match: best_matches) {
             matches_.at(best_match.first).push_back(best_match.second);
           }
 
-          //ds bookkeep matchable for addition
-          _trainables[index_trainable].node      = node_current;
-          _trainables[index_trainable].matchable = matchable_query;
+#ifdef SRRG_MERGE_DESCRIPTORS
+          //ds if we can merge the query matchable
+          if (matchable_reference) {
+
+            //ds bookkeep matchable for merge
+            _mergables[index_mergable].query     = matchable_query;
+            _mergables[index_mergable].reference = matchable_reference;
+            ++index_mergable;
+          } else {
+#endif
+
+            //ds bookkeep matchable for addition
+            _trainables[index_trainable].node      = node_current;
+            _trainables[index_trainable].matchable = matchable_query;
+            ++index_trainable;
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+          }
+#endif
 
           //ds done
           break;
         }
       }
     }
+    _trainables.resize(index_trainable);
+#ifdef SRRG_MERGE_DESCRIPTORS
+    _mergables.resize(index_mergable);
 
-    //ds perform matchable addition and spawn leaves if requested
+    //ds merge matchables
+    for (Mergable& mergable: _mergables) {
+      mergable.reference->merge(mergable.query);
+
+      //ds free query (!) recall that the tree takes ownership of the matchables
+      delete mergable.query;
+    }
+#endif
+
+    //ds integrate new matchables: merge, add and spawn leaves if requested
     std::set<Node*> nodes_to_update;
+    MatchableVector new_matchables(_trainables.size());
+    uint64_t index_matchable = 0;
     for (const Trainable& trainable: _trainables) {
-      if (trainable.node) {
-        trainable.node->matchables.push_back(trainable.matchable);
-        nodes_to_update.insert(trainable.node);
-      }
+      trainable.node->matchables.push_back(trainable.matchable);
+      nodes_to_update.insert(trainable.node);
+      new_matchables[index_matchable] = trainable.matchable;
     }
     for (Node* node: nodes_to_update) {
       node->spawnLeafs(train_mode_);
     }
 
+#ifdef SRRG_MERGE_DESCRIPTORS
+    std::cerr << "merged: " << _mergables.size() << " (absorption ratio: " << static_cast<double>(_mergables.size())/matchables_.size() << ")" << std::endl;
+#endif
+
     //ds insert identifier of the integrated matchables
-    _added_identifiers_train.insert(matchables_.front()->identifier_reference);
-    _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
+    _added_identifiers_train.insert(identifier_image_query);
+    _matchables.insert(_matchables.end(), new_matchables.begin(), new_matchables.end());
   }
 
 
@@ -710,7 +806,7 @@ public:
     clearNodes();
     _added_identifiers_train.clear();
     _trainables.clear();
-    _root = 0;
+    _root = nullptr;
 
     //ds ownership dependent
     if (delete_matchables_) {
@@ -758,14 +854,14 @@ public:
              Node* node_ = 0) {
 
     //ds call on empty tree
-    if (_root == 0) {
+    if (_root == nullptr) {
       number_of_leafs_      = 0;
       number_of_matchables_ = 0;
       return;
     }
 
     //ds start from root if not specified otherwise
-    if (node_ == 0) {
+    if (node_ == nullptr) {
       node_ = _root;
     }
 
@@ -793,7 +889,7 @@ protected:
   void _setNodesRecursive(const Node* node_, std::vector<const Node*>& nodes_collection_) const {
 
     //ds must not be zero
-    assert(0 != node_);
+    assert(node_);
 
     //ds add the current node
     nodes_collection_.push_back(node_);
@@ -816,35 +912,105 @@ protected:
                         const MatchableVector& matchables_reference_,
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_) const {
+    const uint64_t& identifer_tree_query = matchable_query_->identifiers_image[0];
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
-      const uint64_t& identifer_tree_reference = matchable_reference->identifier_reference;
 
       //ds compute the descriptor distance
-      const uint32_t distance = matchable_query_->distanceHamming(matchable_reference);
+      const uint32_t distance = matchable_query_->distance(matchable_reference);
 
       //ds if matching distance is within the threshold
       if (distance < maximum_distance_matching_) {
 
-        //ds check if there already is a match for this identifier
-        try {
+        //ds for every reference in this matchable
+        for (const uint64_t& identifer_tree_reference: matchable_reference->identifiers_image) {
 
-          //ds update match if current is better
-          if (distance < best_matches_.at(identifer_tree_reference).distance) {
-            best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
-            best_matches_.at(identifer_tree_reference).identifier_reference = matchable_reference->identifier;
-            best_matches_.at(identifer_tree_reference).pointer_reference    = matchable_reference->pointer;
-            best_matches_.at(identifer_tree_reference).distance             = distance;
+          //ds check if there already is a match for this identifier
+          try {
+
+            //ds update match if current is better
+            if (distance < best_matches_.at(identifer_tree_reference).distance) {
+              best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
+              best_matches_.at(identifer_tree_reference).identifier_reference = matchable_reference->identifiers.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).pointer_reference    = matchable_reference->pointers.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).distance             = distance;
+            }
+          } catch (const std::out_of_range& /*exception*/) {
+
+            //ds add a new match
+            best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
+                                                                                matchable_reference,
+                                                                                matchable_query_->identifiers.at(identifer_tree_query),
+                                                                                matchable_reference->identifiers.at(identifer_tree_reference),
+                                                                                matchable_query_->pointers.at(identifer_tree_query),
+                                                                                matchable_reference->pointers.at(identifer_tree_reference),
+                                                                                distance)));
           }
-        } catch (const std::out_of_range& /*exception*/) {
-
-          //ds add a new match
-          best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_, matchable_reference, distance)));
         }
       }
     }
   }
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief retrieves best matches (BF search) for provided matchables for all image indices
+  //! @param[in] matchable_query_
+  //! @param[in] matchables_reference_
+  //! @param[in] maximum_distance_matching_
+  //! @param[in,out] best_matches_ best match search storage: image id, match candidate
+  //! @param[in,out] matchable_reference_for_merge_ reference matchable with distance == 0 (matchable merge candidate)
+  void _matchExhaustive(const Matchable* matchable_query_,
+                        const MatchableVector& matchables_reference_,
+                        const uint32_t& maximum_distance_matching_,
+                        std::map<uint64_t, Match>& best_matches_,
+                        Matchable*& matchable_reference_for_merge_) const {
+    const uint64_t& identifer_tree_query = matchable_query_->identifiers_image[0];
+
+    //ds check current descriptors in this node
+    for (const Matchable* matchable_reference: matchables_reference_) {
+
+      //ds compute the descriptor distance
+      const uint32_t distance = matchable_query_->distance(matchable_reference);
+
+      //ds if the matchable descriptors are identical - we can merge
+      if (distance <= SRRG_MERGE_DESCRIPTORS) {
+
+        //ds behold the power of C++ (we want to keep the MatchableVector elements const)
+        matchable_reference_for_merge_ = const_cast<Matchable*>(matchable_reference);
+      }
+
+      //ds if matching distance is within the threshold
+      if (distance < maximum_distance_matching_) {
+
+        //ds for every reference in this matchable
+        for (const uint64_t& identifer_tree_reference: matchable_reference->identifiers_image) {
+
+          //ds check if there already is a match for this identifier
+          try {
+
+            //ds update match if current is better
+            if (distance < best_matches_.at(identifer_tree_reference).distance) {
+              best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
+              best_matches_.at(identifer_tree_reference).identifier_reference = matchable_reference->identifiers.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).pointer_reference    = matchable_reference->pointers.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).distance             = distance;
+            }
+          } catch (const std::out_of_range& /*exception*/) {
+
+            //ds add a new match
+            best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
+                                                                                matchable_reference,
+                                                                                matchable_query_->identifiers.at(identifer_tree_query),
+                                                                                matchable_reference->identifiers.at(identifer_tree_reference),
+                                                                                matchable_query_->pointers.at(identifer_tree_query),
+                                                                                matchable_reference->pointers.at(identifer_tree_reference),
+                                                                                distance)));
+          }
+        }
+      }
+    }
+  }
+#endif
 };
 
 typedef BinaryTree<BinaryNode512> BinaryTree512;

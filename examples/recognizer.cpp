@@ -45,7 +45,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << "image interspace: " << number_of_images_interspace << std::endl;
 
   //ds matching threshold
-  const uint32_t maximum_descriptor_distance = 75;
+  const uint32_t maximum_descriptor_distance = 50;
 
   //ds evaluate desired processing mode
   ProcessingMode processing_mode;
@@ -176,6 +176,14 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds info
     std::cerr << "processed image: " << number_of_processed_images << " | total descriptors stored: " << number_of_stored_descriptors
               << " | current fps: " << number_of_processed_images_current_window/duration_current_seconds << std::endl;
+
+    //ds timing - reset measurement window for every 100 frames
+    if (number_of_processed_images_current_window > 100) {
+      number_of_processed_images_current_window = 0;
+      duration_current_seconds                  = 0;
+    }
+
+    //ds visuals
     cv::Mat image_display(image);
     cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
 
@@ -198,7 +206,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
           //ds draw matched descriptors
           for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-            const cv::KeyPoint* point_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
+            const cv::KeyPoint* point_query = static_cast<const cv::KeyPoint*>(match.pointer_query);
             cv::circle(image_display, point_query->pt, 2, cv::Scalar(0, 255, 0), -1);
           }
         }
@@ -232,13 +240,7 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds done
     ++number_of_processed_images;
     ++number_of_processed_images_current_window;
-
-    //ds timing - reset measurement window for every 100 frames
     duration_current_seconds += std::chrono::duration<double>(std::chrono::system_clock::now()-time_begin).count();
-    if (number_of_processed_images_current_window > 100) {
-      number_of_processed_images_current_window = 0;
-      duration_current_seconds                  = 0;
-    }
   }
   image_file_paths.clear();
   return 0;

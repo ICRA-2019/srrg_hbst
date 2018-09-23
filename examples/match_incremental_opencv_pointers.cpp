@@ -49,7 +49,6 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds measurements
   std::chrono::time_point<std::chrono::system_clock> time_begin;
-  std::chrono::duration<double> duration_construction(0);
   std::chrono::duration<double> duration_query(0);
   double cumulative_matching_ratio = 0;
   const uint32_t maximum_matching_distance = 25;
@@ -71,40 +70,31 @@ int32_t main(int32_t argc_, char** argv_) {
     matchables_per_image[u] = getMatchables(file_test_image, u);
   }
 
-  //ds create HBST for first image
-  std::printf("building tree with image [%02u]\n", 0);
-  time_begin = std::chrono::system_clock::now();
-  Tree hbst_tree(0, matchables_per_image[0]);
-  duration_construction += std::chrono::system_clock::now()-time_begin;
-
-  //ds train tree on all subsequent images
-  for (uint32_t u = 1; u < number_of_images; ++u) {
-    std::printf("training tree with image [%02u]\n", u);
-    time_begin = std::chrono::system_clock::now();
-    hbst_tree.add(matchables_per_image[u], srrg_hbst::SplittingStrategy::SplitEven);
-    duration_construction += std::chrono::system_clock::now()-time_begin;
-  }
+  //ds create HBST database
+  std::printf("allocating empty tree\n");
+  Tree hbst_tree;
 
   //ds check each image against each other and itself (100% ratio)
-  std::printf("starting matching with maximum distance: %u \n", maximum_matching_distance);
+  std::printf("starting matching and adding with maximum distance: %u \n", maximum_matching_distance);
   std::printf("------------[ press any key to step ]------------\n");
   for (uint32_t index_query = 0; index_query < number_of_images; ++index_query) {
 
     //ds query HBST with image 1
     Tree::MatchVectorMap matches;
     time_begin = std::chrono::system_clock::now();
-    hbst_tree.match(matchables_per_image[index_query], matches, maximum_matching_distance);
+    hbst_tree.matchAndAdd(matchables_per_image[index_query], matches, maximum_matching_distance);
     duration_query += std::chrono::system_clock::now()-time_begin;
 
     //ds check all match vectors in the map
-    for (uint32_t index_reference = 0; index_reference < number_of_images; ++index_reference) {
+    for (const Tree::MatchVectorMapElement& match_vector: matches) {
+      const uint64_t& index_reference = match_vector.first;
 
       //ds compute matching ratio
       const double matching_ratio = static_cast<double>(matches.at(index_reference).size())/matchables_per_image[index_reference].size();
 
       //ds check approximate matching ratio
 
-      std::printf("matches for QUERY [%02u] to REFERENCE [%02u]: %4lu (matching ratio: %5.3f)\n",
+      std::printf("matches for QUERY [%02u] to REFERENCE [%02lu]: %4lu (matching ratio: %5.3f)\n",
                   index_query, index_reference, matches.at(index_reference).size(), matching_ratio);
       cumulative_matching_ratio += matching_ratio;
 
@@ -139,7 +129,6 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds statistics summary
   std::cerr << "------------------------------------------------" << std::endl;
-  std::printf("         construction duration (s): %6.4f\n", duration_construction.count());
   std::printf("average query duration matches (s): %6.4f\n", duration_query.count()/number_of_images);
   std::printf("      average query matching ratio: %6.4f\n", cumulative_matching_ratio/(number_of_images*number_of_images));
   std::cerr << "------------------------------------------------" << std::endl;

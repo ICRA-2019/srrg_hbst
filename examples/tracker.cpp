@@ -176,10 +176,16 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds info
     std::cerr << "processed images: " << number_of_processed_images << " | total descriptors stored: " << number_of_stored_descriptors
               << " | current fps: " << number_of_processed_images_current_window/duration_current_seconds << std::endl;
-    cv::Mat image_display(image);
-    cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
+
+    //ds timing - reset measurement window for every 100 frames
+    if (number_of_processed_images_current_window > 100) {
+      number_of_processed_images_current_window = 0;
+      duration_current_seconds                  = 0;
+    }
 
     //ds draw current keypoints
+    cv::Mat image_display(image);
+    cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
     for (const cv::KeyPoint* keypoint: dynamic_keypoints) {
       cv::circle(image_display, keypoint->pt, 2, cv::Scalar(255, 0, 0), -1);
     }
@@ -230,12 +236,8 @@ int32_t main(int32_t argc_, char** argv_) {
       break;
     }
 
-    //ds timing - reset measurement window for every 100 frames
+    //ds timing
     duration_current_seconds += std::chrono::duration<double>(std::chrono::system_clock::now()-time_begin).count();
-    if (number_of_processed_images_current_window > 100) {
-      number_of_processed_images_current_window = 0;
-      duration_current_seconds                  = 0;
-    }
 
     //ds done
     ++number_of_processed_images;

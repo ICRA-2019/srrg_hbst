@@ -11,27 +11,28 @@ struct BinaryMatch {
 
   //! @brief default constructor for an uninitialized match
   //! @returns an uninitialized match
-  BinaryMatch(): matchable_query(0),
-                 matchable_reference(0),
+  BinaryMatch(): matchable_query(nullptr),
+                 matchable_reference(nullptr),
                  identifier_query(0),
                  identifier_reference(0),
-                 pointer_query(0),
-                 pointer_reference(0),
+                 pointer_query(nullptr),
+                 pointer_reference(nullptr),
                  distance(0) {}
 
-  //! @brief constructor
-  //! @param[in] query_ query matchable
-  //! @param[in] reference_ reference matchable
-  //! @param[in] distance_ Hamming distance for the given association
-  //! @returns a match instance
-  BinaryMatch(const MatchableType_* query_,
-              const MatchableType_* reference_,
-              const real_type_& distance_): matchable_query(query_),
-                                            matchable_reference(reference_),
-                                            identifier_query(query_->identifier),
-                                            identifier_reference(reference_->identifier),
-                                            pointer_query(query_->pointer),
-                                            pointer_reference(reference_->pointer),
+  //! @brief default constructor for an uninitialized match
+  //! @returns a fully initialized match
+  BinaryMatch(const MatchableType_* matchable_query_,
+              const MatchableType_* matchable_reference_,
+              const uint64_t& identifier_query_,
+              const uint64_t& identifier_reference_,
+              const void* pointer_query_,
+              const void* pointer_reference_,
+              const real_type_& distance_): matchable_query(matchable_query_),
+                                            matchable_reference(matchable_reference_),
+                                            identifier_query(identifier_query_),
+                                            identifier_reference(identifier_reference_),
+                                            pointer_query(pointer_query_),
+                                            pointer_reference(pointer_reference_),
                                             distance(distance_) {}
 
   //! @brief copy constructor
