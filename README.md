@@ -31,6 +31,7 @@ A simple example program with visuals can be called with (from the project root,
 
 Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables. <br>
 The example sequence of 10 images is part of the repository and can be found under `examples/test_images`. <br>
+Note that `image_09.pgm` is identical to `image_00.pgm`, this is to validate 100% retrieval for identical images (database integrity). <br> 
 All images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
 
 ---
