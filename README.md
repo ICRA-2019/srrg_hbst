@@ -15,6 +15,7 @@ Optional:
 - [OpenCV2/3](http://opencv.org/) for the automatic build of wrapped constructors and OpenCV related example code (add the definition `-DSRRG_HBST_HAS_OPENCV` in your cmake project).
 - [libQGLViewer](http://libqglviewer.com/) for visual odometry examples ([viewers](examples))
 - [catkin Command Line Tools](https://catkin-tools.readthedocs.io/en/latest/) for easy CMake project integration
+- [ROS Indigo/Kinetic/Melodic](http://wiki.ros.org/ROS/Installation) for live ROS nodes (make sure you have a sane OpenCV installation)
 
 ## [* example code *](examples) (catkin ready!)
 Out of source CMake build sequence for example code (in project root):
