@@ -4,12 +4,13 @@ project(srrg_hbst)
 #-------------------------------------------------------------------------------------------------------------------------------------
 #ds HBST generic compilation flags - ADD THEM IN YOUR PROJECT AS WELL TO ENABLE THEM (HBST is header-only)
 
-# - DESCRIPTOR MERGING: HBST checks for identical descriptors stemming from multiple images and represents them with a single entity
-#the value of SRRG_MERGE_DESCRIPTORS (e.g. 0) determines the maximum allowed distance between two descriptors for being merged
-#a value of SRRG_MERGE_DESCRIPTORS=0 means they have to be identical
+# - SRRG_MERGE_DESCRIPTORS: HBST checks for identical descriptors stemming from multiple images and represents them with a single entity
+#two descriptors are merged if their distance is within a certain threshold
+#the threshold can be controlled with the static variable maximum_distance_for_merge
+#a value of maximum_distance_for_merge=0 means they have to be identical
 #the higher this value, the more compact and efficient becomes the tree at the cost of matching accuracy
 #this flag is recommended for large-scale datasets and lifelong recognition applications
-add_definitions(-DSRRG_MERGE_DESCRIPTORS=0)
+add_definitions(-DSRRG_MERGE_DESCRIPTORS)
 #-------------------------------------------------------------------------------------------------------------------------------------
 
 

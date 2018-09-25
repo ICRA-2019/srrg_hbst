@@ -118,36 +118,6 @@ public:
     clear();
   }
 
-//ds accessible attributes
-public:
-
-  //! @brief identifier for this tree
-  const uint64_t identifier = 0;
-
-  //! @brief const accessor to root node
-  const Node* root() const {return _root;}
-
-//ds attributes
-protected:
-
-  //! @brief root node (e.g. starting point for similarity search)
-  Node* _root = nullptr;
-
-  //! @brief bookkeeping: all matchables contained in the tree
-  MatchableVector _matchables;
-  MatchableVector _matchables_to_train;
-
-  //! @brief bookkeeping: integrated matchable train identifiers (unique)
-  std::set<uint64_t> _added_identifiers_train;
-
-  //! @brief bookkeeping: trainable matchables resulting from last matchAndAdd call
-  std::vector<Trainable> _trainables;
-
-#ifdef SRRG_MERGE_DESCRIPTORS
-  //! @brief bookkeeping: mergable matchables resulting from last matchAndAdd call
-  std::vector<Mergable> _mergables;
-#endif
-
 //ds shared pointer access wrappers
 public:
 
@@ -543,11 +513,11 @@ public:
           //ds check if we can absorb this matchable
           bool insertion_required = true;
           for (const Matchable* matchable_reference: node->matchables) {
-            if (matchable_reference->distance(matchable_to_insert) == 0) {
+            if (matchable_reference->distance(matchable_to_insert) <= maximum_distance_for_merge) {
 
               //ds absorb the matchable on the spot - bare with me
               Matchable* merger = const_cast<Matchable*>(matchable_reference);
-              merger->merge(matchable_to_insert);
+              merger->mergeSingle(matchable_to_insert);
               delete matchable_to_insert;
               insertion_required = false;
               break;
@@ -684,7 +654,7 @@ public:
 
     //ds merge matchables
     for (Mergable& mergable: _mergables) {
-      mergable.reference->merge(mergable.query);
+      mergable.reference->mergeSingle(mergable.query);
 
       //ds free query (!) recall that the tree takes ownership of the matchables
       delete mergable.query;
@@ -703,10 +673,6 @@ public:
     for (Node* node: nodes_to_update) {
       node->spawnLeafs(train_mode_);
     }
-
-#ifdef SRRG_MERGE_DESCRIPTORS
-    std::cerr << "merged: " << _mergables.size() << " (absorption ratio: " << static_cast<double>(_mergables.size())/matchables_.size() << ")" << std::endl;
-#endif
 
     //ds insert identifier of the integrated matchables
     _added_identifiers_train.insert(identifier_image_query);
@@ -973,7 +939,7 @@ protected:
       const uint32_t distance = matchable_query_->distance(matchable_reference);
 
       //ds if the matchable descriptors are identical - we can merge
-      if (distance <= SRRG_MERGE_DESCRIPTORS) {
+      if (distance <= maximum_distance_for_merge) {
 
         //ds behold the power of C++ (we want to keep the MatchableVector elements const)
         matchable_reference_for_merge_ = const_cast<Matchable*>(matchable_reference);
@@ -1011,7 +977,48 @@ protected:
     }
   }
 #endif
+
+//ds accessible attributes
+public:
+
+  //! @brief const accessor to root node
+  const Node* root() const {return _root;}
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief maximum allowed descriptor distance for merging two descriptors
+  static uint32_t maximum_distance_for_merge;
+#endif
+
+//ds attributes
+protected:
+
+  //! @brief identifier for this tree
+  const uint64_t identifier = 0;
+
+  //! @brief root node (e.g. starting point for similarity search)
+  Node* _root = nullptr;
+
+  //! @brief bookkeeping: all matchables contained in the tree
+  MatchableVector _matchables;
+  MatchableVector _matchables_to_train;
+
+  //! @brief bookkeeping: integrated matchable train identifiers (unique)
+  std::set<uint64_t> _added_identifiers_train;
+
+  //! @brief bookkeeping: trainable matchables resulting from last matchAndAdd call
+  std::vector<Trainable> _trainables;
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief bookkeeping: mergable matchables resulting from last matchAndAdd call
+  std::vector<Mergable> _mergables;
+#endif
 };
+
+//ds default configuration
+#ifdef SRRG_MERGE_DESCRIPTORS
+template<typename BinaryNodeType_>
+uint32_t BinaryTree<BinaryNodeType_>::maximum_distance_for_merge = 0;
+#endif
 
 typedef BinaryTree<BinaryNode512> BinaryTree512;
 typedef BinaryTree<BinaryNode256> BinaryTree256;

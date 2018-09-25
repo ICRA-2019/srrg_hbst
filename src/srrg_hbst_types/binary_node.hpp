@@ -214,6 +214,30 @@ protected:
     spawnLeafs(train_mode_);
   }
 
+//ds helpers
+protected:
+
+  const real_type _getSetBitFraction(const uint32_t& index_split_bit_,
+                                     const MatchableVector& matchables_,
+                                     uint64_t& number_of_set_bits_total_) const {
+    assert(0 < matchables_.size());
+
+    //ds count
+    uint64_t number_of_set_bits = 0;
+
+    //ds just add the bits up (a one counts automatically as one)
+    for (const Matchable* matchable: matchables_) {
+      number_of_set_bits += matchable->descriptor[index_split_bit_];
+    }
+
+    //ds set total
+    number_of_set_bits_total_ = number_of_set_bits;
+    assert(number_of_set_bits_total_ <= matchables_.size());
+
+    //ds return ratio
+    return (static_cast<real_type>(number_of_set_bits)/matchables_.size());
+  }
+
 //ds fields TODO encapsulate
 public:
 
@@ -258,30 +282,6 @@ public:
 
   //ds random number generator, used for random splitting (for all nodes)
   static std::mt19937 random_number_generator;
-
-//ds helpers
-protected:
-
-  const real_type _getSetBitFraction(const uint32_t& index_split_bit_,
-                                     const MatchableVector& matchables_,
-                                     uint64_t& number_of_set_bits_total_) const {
-    assert(0 < matchables_.size());
-
-    //ds count
-    uint64_t number_of_set_bits = 0;
-
-    //ds just add the bits up (a one counts automatically as one)
-    for (const Matchable* matchable: matchables_) {
-      number_of_set_bits += matchable->descriptor[index_split_bit_];
-    }
-
-    //ds set total
-    number_of_set_bits_total_ = number_of_set_bits;
-    assert(number_of_set_bits_total_ <= matchables_.size());
-
-    //ds return ratio
-    return (static_cast<real_type>(number_of_set_bits)/matchables_.size());
-  }
 };
 
 //ds default configuration

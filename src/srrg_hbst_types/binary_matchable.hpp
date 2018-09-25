@@ -51,10 +51,13 @@ public:
   //! @param[in] identifier_tree_ HBST tree identifier (optional)
   BinaryMatchable(const uint64_t& identifier_,
                   const Descriptor& descriptor_,
-                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_) {
-    identifiers_image.push_back(identifier_image_);
-    identifiers.insert(std::make_pair(identifier_image_, identifier_));
-    pointers.insert(std::make_pair(identifier_image_, nullptr));
+                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_),
+                                                          _identifier_image(identifier_image_),
+                                                          _identifier(identifier_),
+                                                          _pointer(nullptr) {
+    identifiers_image.push_back(_identifier_image);
+    identifiers.insert(std::make_pair(_identifier_image, _identifier));
+    pointers.insert(std::make_pair(_identifier_image, _pointer));
   }
 
   //! @brief constructor with an object pointer for association
@@ -63,10 +66,13 @@ public:
   //! @param[in] identifier_tree_ HBST tree identifier (optional)
   BinaryMatchable(const void* pointer_,
                   const Descriptor& descriptor_,
-                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_) {
-    identifiers_image.push_back(identifier_image_);
-    identifiers.insert(std::make_pair(identifier_image_, 0));
-    pointers.insert(std::make_pair(identifier_image_, pointer_));
+                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_),
+                                                          _identifier_image(identifier_image_),
+                                                          _identifier(0),
+                                                          _pointer(pointer_) {
+    identifiers_image.push_back(_identifier_image);
+    identifiers.insert(std::make_pair(_identifier_image, _identifier));
+    pointers.insert(std::make_pair(_identifier_image, _pointer));
   }
 
   //! @brief constructor with index and object pointer for association
@@ -78,15 +84,17 @@ public:
   BinaryMatchable(const uint64_t& identifier_,
                   const void* pointer_,
                   const Descriptor& descriptor_,
-                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_) {
-    identifiers_image.push_back(identifier_image_);
-    identifiers.insert(std::make_pair(identifier_image_, identifier_));
-    pointers.insert(std::make_pair(identifier_image_,pointer_));
+                  const uint64_t& identifier_image_ = 0): descriptor(descriptor_),
+                                                          _identifier_image(identifier_image_),
+                                                          _identifier(identifier_),
+                                                          _pointer(pointer_) {
+    identifiers_image.push_back(_identifier_image);
+    identifiers.insert(std::make_pair(_identifier_image, _identifier));
+    pointers.insert(std::make_pair(_identifier_image, _pointer));
   }
 
 //ds wrapped constructors - only available if OpenCV is present on building system
 #ifdef SRRG_HBST_HAS_OPENCV
-
   BinaryMatchable(const uint64_t& identifier_,
                   const cv::Mat& descriptor_,
                   const uint64_t& identifier_image_ = 0): BinaryMatchable(identifier_,
@@ -106,7 +114,6 @@ public:
                                                                           pointer_,
                                                                           getDescriptor(descriptor_),
                                                                           identifier_image_) {}
-
 #endif
 
   //! @brief default destructor
@@ -134,8 +141,16 @@ public:
     identifiers_image.insert(identifiers_image.begin(), matchable_->identifiers_image.begin(), matchable_->identifiers_image.end());
   }
 
-#ifdef SRRG_HBST_HAS_OPENCV
+  //! @brief merges a matchable with THIS matchable (desirable when having to store identical descriptors)
+  //! @brief this method has been created for quick matchable merging where matchable_ only contains a single entry for identifier and pointer
+  //! @param[in] matchable_ the matchable to merge with THIS
+  inline void mergeSingle(const BinaryMatchable<descriptor_size_bits_>* matchable_) {
+    identifiers.insert(std::make_pair(_identifier_image, _identifier));
+    pointers.insert(std::make_pair(_identifier_image, _pointer));
+    identifiers_image.push_back(_identifier_image);
+  }
 
+#ifdef SRRG_HBST_HAS_OPENCV
   //! @brief descriptor wrapping - only available if OpenCV is present on building system
   //! @param[in] descriptor_cv_ opencv descriptor to convert into HBST format
   static inline Descriptor getDescriptor(const cv::Mat& descriptor_cv_) {
@@ -169,7 +184,6 @@ public:
     }
     return binary_descriptor;
   }
-
 #endif
 
 //ds attributes
@@ -186,6 +200,18 @@ public:
 
   //! @brief a connected object correspondences - when using this field one must ensure the permanence of the referenced object! - accessible through image identifier
   std::map<uint64_t, const void*> pointers;
+
+//ds fast access (for a matchable with only single values, internal only)
+private:
+
+  //! @brief single value access only: reference image identifier
+  const uint64_t _identifier_image;
+
+  //! @brief single value access only: reference descriptor identifier
+  const uint64_t _identifier;
+
+  //! @brief single value access only: reference descriptor memory
+  const void* _pointer;
 };
 
 typedef BinaryMatchable<512> BinaryMatchable512;

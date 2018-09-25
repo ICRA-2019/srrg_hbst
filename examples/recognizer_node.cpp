@@ -64,6 +64,11 @@ int32_t main(int32_t argc_, char** argv_) {
   maximum_descriptor_distance = 75;
   std::cerr << "maximum descriptor distance: " << maximum_descriptor_distance << std::endl;
 
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //ds configure the tree
+  Tree::maximum_distance_for_merge = 0;
+#endif
+
   //ds feature handling
 #if CV_MAJOR_VERSION == 2
   keypoint_detector    = new cv::ORB(1000);
@@ -92,6 +97,8 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds breathe
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
+
+  std::cerr << "terminating" << std::endl;
   return 0;
 }
 
@@ -127,10 +134,7 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
     number_of_stored_descriptors += descriptors.rows;
     ++number_of_processed_images;
 
-    //ds info
-    std::cerr << "callbackImage|processed images: " << number_of_processed_images
-              << " descriptors: " << descriptors.rows << " (total: " << number_of_stored_descriptors << ")"
-              << " processing time(s): " << processing_duration_seconds << "\r";
+    //ds info display
     cv::Mat image_display(image);
     cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
 
@@ -146,7 +150,7 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
         //ds if we have sufficient matches
         const uint32_t number_of_matches = matches_per_image[image_number_reference].size();
         const double matching_ratio      = static_cast<double>(number_of_matches)/keypoints.size();
-        if (matching_ratio > 0.1 && number_of_matches > 10) {
+        if (matching_ratio > 0.1 && number_of_matches > 100) {
 
           //ds draw matched descriptors
           for (const Tree::Match& match: matches_per_image[image_number_reference]) {
@@ -162,6 +166,11 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
     cv::resize(image_display, image_display, current_size);
     cv::imshow("callbackImage|current image", image_display);
     const int32_t key = cv::waitKey(1);
+
+    //ds stats
+    std::printf("callbackImage|processed images: %6u descriptors: %5d (total: %9lu) processing time(s): %4.3f\r",
+                number_of_processed_images, descriptors.rows, number_of_stored_descriptors, processing_duration_seconds);
+    std::fflush(stdout);
 
     //ds check if image shrinking [+] or growing [-] is desired TODO softcode
     if (key == 45) {
