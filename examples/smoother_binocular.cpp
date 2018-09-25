@@ -147,7 +147,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << extension << "'" << std::endl;
 
   //ds miscellaneous configuration
-  const uint32_t maximum_descriptor_distance = 25; //ds number of mismatching bits
+  const uint32_t maximum_descriptor_distance = 50; //ds number of mismatching bits
   const uint32_t maximum_keypoint_distance   = 50; //ds pixels
 
   //ds feature handling
@@ -166,12 +166,12 @@ int32_t main(int32_t argc_, char** argv_) {
   //ds estimated trajectory
   IsometryVector estimated_camera_poses(1, Eigen::Isometry3d::Identity());
 
-//  //ds initialize viewer
-//  QApplication ui_server(argc_, argv_);
-//  Viewer viewer;
-//  viewer.setLandmarks(landmarks);
-//  viewer.show();
-//  viewer.updateGL();
+  //ds initialize viewer
+  QApplication ui_server(argc_, argv_);
+  Viewer viewer;
+  viewer.setLandmarks(landmarks);
+  viewer.show();
+  viewer.updateGL();
 
   //ds constant velocity motion model bookkeeping
   Eigen::Isometry3d motion_previous(Eigen::Isometry3d::Identity());
@@ -185,7 +185,7 @@ int32_t main(int32_t argc_, char** argv_) {
   std::string file_name_image_current_right = file_name_initial_image_right;
   cv::Mat image_current_left                = cv::imread(file_name_image_current_left, CV_LOAD_IMAGE_GRAYSCALE);
   cv::Mat image_current_right               = cv::imread(file_name_image_current_right, CV_LOAD_IMAGE_GRAYSCALE);
-  while (image_current_left.rows != 0 && image_current_left.cols != 0 && number_of_processed_images < 100) {
+  while (image_current_left.rows != 0 && image_current_left.cols != 0) {
 
 // FEATURE EXTRACTION AND STRUCTURE COMPUTATION ---------------------------------------------------------------------------------------------------------------------------
     //ds detect FAST keypoints
@@ -461,17 +461,17 @@ int32_t main(int32_t argc_, char** argv_) {
                 << " initial image " << std::endl;
     }
 
-//    //ds draw currently detected points
-//    for (Framepoint* framepoint: current_points) {
-//      cv::circle(image_display, framepoint->keypoint_left.pt, 2, cv::Scalar(255, 0, 0), -1);
-//    }
-//    cv::imshow("current image", image_display);
-//    cv::waitKey(1);
+    //ds draw currently detected points
+    for (Framepoint* framepoint: current_points) {
+      cv::circle(image_display, framepoint->keypoint_left.pt, 2, cv::Scalar(255, 0, 0), -1);
+    }
+    cv::imshow("current image", image_display);
+    cv::waitKey(1);
 
-//    //ds update viewer
-//    viewer.addPose(estimated_camera_poses[number_of_processed_images]);
-//    viewer.updateGL();
-//    ui_server.processEvents();
+    //ds update viewer
+    viewer.addPose(estimated_camera_poses[number_of_processed_images]);
+    viewer.updateGL();
+    ui_server.processEvents();
 
     //ds compute file name for next images
     ++number_of_processed_images;
@@ -647,11 +647,17 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
 
   //ds for each stereo match
   for (const Match& match: stereo_matches) {
-    const uint32_t& index_left  = match.identifier_reference;
-    const uint32_t& index_right = match.identifier_query;
-
+    const uint32_t& index_left              = match.identifier_reference;
+    const uint32_t& index_right             = match.identifier_query;
     const cv::Point2d& point_in_image_left  = keypoints_left_[index_left].pt;
     const cv::Point2d& point_in_image_right = keypoints_right_[index_right].pt;
+
+    //ds skip if not on horizontal epipolar line
+    if (point_in_image_left.y != point_in_image_right.y) {
+      continue;
+    }
+
+    //ds compute disparity
     const double disparity_pixels = point_in_image_left.x-point_in_image_right.x;
 
     //ds if disparity is sufficient
