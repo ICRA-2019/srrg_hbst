@@ -20,11 +20,11 @@
 
 //ds current HBST configuration - 256 bit
 typedef srrg_hbst::BinaryTree256 Tree;
-typedef srrg_hbst::BinaryTree256::Matchable Matchable;
-typedef srrg_hbst::BinaryTree256::MatchableVector MatchableVector;
-typedef srrg_hbst::BinaryTree256::Match Match;
-typedef srrg_hbst::BinaryTree256::MatchVector MatchVector;
-typedef srrg_hbst::BinaryTree256::MatchVectorMap MatchVectorMap;
+typedef Tree::Matchable Matchable;
+typedef Tree::MatchableVector MatchableVector;
+typedef Tree::Match Match;
+typedef Tree::MatchVector MatchVector;
+typedef Tree::MatchVectorMap MatchVectorMap;
 
 //ds aligned eigen types
 typedef std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > IsometryVector;
@@ -36,24 +36,25 @@ struct Landmark {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Eigen::Vector3d coordinates_in_world;
 };
-
+struct KeypointWithDescriptor {
+    KeypointWithDescriptor() {}
+    KeypointWithDescriptor(const cv::KeyPoint& keypoint_,
+                           const cv::Mat& descriptor_): keypoint(keypoint_),
+                                                        descriptor(descriptor_) {}
+  cv::KeyPoint keypoint;
+  cv::Mat descriptor;
+};
 struct Framepoint {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  Framepoint(const cv::KeyPoint& keypoint_left_,
-             const cv::KeyPoint& keypoint_right_,
-             const cv::Mat& descriptor_left_,
-             const cv::Mat& descriptor_right_,
-             const Eigen::Vector3d& coordinates_in_camera_): keypoint_left(keypoint_left_),
-                                                             keypoint_right(keypoint_right_),
-                                                             descriptor_left(descriptor_left_),
-                                                             descriptor_right(descriptor_right_),
+  Framepoint(const KeypointWithDescriptor& feature_left_,
+             const KeypointWithDescriptor& feature_right_,
+             const Eigen::Vector3d& coordinates_in_camera_): feature_left(feature_left_),
+                                                             feature_right(feature_right_),
                                                              coordinates_in_camera(coordinates_in_camera_) {}
 
   //ds measured
-  const cv::KeyPoint keypoint_left;
-  const cv::KeyPoint keypoint_right;
-  const cv::Mat descriptor_left;
-  const cv::Mat descriptor_right;
+  const KeypointWithDescriptor feature_left;
+  const KeypointWithDescriptor feature_right;
 
   //ds computed
   Framepoint* previous  = 0;
@@ -97,10 +98,8 @@ Eigen::Isometry3d v2t(const Eigen::Matrix<double, 6, 1>& t);
 Eigen::Matrix3d skew(const Eigen::Vector3d& p);
 std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calibration_matrix_,
                                              const Eigen::Vector3d& offset_to_camera_right_,
-                                             const std::vector<cv::KeyPoint>& keypoints_left_,
-                                             const std::vector<cv::KeyPoint>& keypoints_right_,
-                                             const cv::Mat& descriptors_left_,
-                                             const cv::Mat& descriptors_right_,
+                                             std::vector<KeypointWithDescriptor>& features_left_,
+                                             std::vector<KeypointWithDescriptor>& features_right_,
                                              const uint32_t& maximum_descriptor_distance_);
 
 
@@ -147,8 +146,9 @@ int32_t main(int32_t argc_, char** argv_) {
   std::cerr << extension << "'" << std::endl;
 
   //ds miscellaneous configuration
-  const uint32_t maximum_descriptor_distance = 50; //ds number of mismatching bits
-  const uint32_t maximum_keypoint_distance   = 50; //ds pixels
+  const uint32_t maximum_descriptor_distance_tracking      = 25; //ds number of mismatching bits
+  const uint32_t maximum_descriptor_distance_triangulation = 25; //ds number of mismatching bits
+  const uint32_t maximum_keypoint_distance                 = 50; //ds pixels
 
   //ds feature handling
 #if CV_MAJOR_VERSION == 2
@@ -201,14 +201,25 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image_current_right, keypoints_right, descriptors_right);
     uint32_t number_of_keypoints = keypoints_left.size();
 
+    //ds connect keypoints with descriptors in a feature object so we don't have to require bookeeping for indices
+    std::vector<KeypointWithDescriptor> features_left(keypoints_left.size());
+    std::vector<KeypointWithDescriptor> features_right(keypoints_right.size());
+    for (uint32_t u = 0; u < keypoints_left.size(); ++u) {
+      features_left[u].descriptor = descriptors_left.row(u);
+      features_left[u].keypoint   = keypoints_left[u];
+    }
+    for (uint32_t u = 0; u < keypoints_right.size(); ++u) {
+      features_right[u].descriptor = descriptors_right.row(u);
+      features_right[u].keypoint   = keypoints_right[u];
+    }
+
     //ds obtain 3D points from rigid stereo
     std::vector<Framepoint*> current_points(getPointsFromStereo(camera_calibration_matrix,
                                                                 baseline_pixels_,
-                                                                keypoints_left,
-                                                                keypoints_right,
-                                                                descriptors_left,
-                                                                descriptors_right,
-                                                                maximum_descriptor_distance));
+                                                                features_left,
+                                                                features_right,
+                                                                maximum_descriptor_distance_triangulation));
+    const uint32_t number_of_triangulated_points = current_points.size();
     framepoints_per_image.push_back(current_points);
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -216,12 +227,12 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds obtain linked matchables for the LEFT image
     MatchableVector matchables(current_points.size());
     for (uint32_t u = 0; u < current_points.size(); ++u) {
-      matchables[u] = new Matchable(current_points[u], current_points[u]->descriptor_left, number_of_processed_images);
+      matchables[u] = new Matchable(current_points[u], current_points[u]->feature_left.descriptor, number_of_processed_images);
     }
 
     //ds obtain matches against all inserted matchables (i.e. images so far)
     MatchVectorMap matches_per_image;
-    hbst_tree.matchAndAdd(matchables, matches_per_image, maximum_descriptor_distance);
+    hbst_tree.matchAndAdd(matchables, matches_per_image, maximum_descriptor_distance_tracking);
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     //ds info
@@ -253,7 +264,7 @@ int32_t main(int32_t argc_, char** argv_) {
         }
 
         //ds check maximum tracking distance
-        if (cv::norm(cv::Mat(current_point->keypoint_left.pt), cv::Mat(previous_point->keypoint_left.pt)) < maximum_keypoint_distance) {
+        if (cv::norm(cv::Mat(current_point->feature_left.keypoint.pt), cv::Mat(previous_point->feature_left.keypoint.pt)) < maximum_keypoint_distance) {
 
           //ds establish track between framepoints
           current_point->landmark     = previous_point->landmark;
@@ -274,7 +285,7 @@ int32_t main(int32_t argc_, char** argv_) {
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       std::cerr << "read images: " << file_name_image_current_left << " | " << file_name_image_current_right
-                << " with triangulated points: " << current_points.size() << "/" << number_of_keypoints
+                << " with triangulated points: " << number_of_triangulated_points << "/" << number_of_keypoints
                 << " inlier tracks: " << number_of_measurements
                 << " average track length: " << average_track_length << std::endl;
 
@@ -336,9 +347,9 @@ int32_t main(int32_t argc_, char** argv_) {
           }
 
           //ds compute error - only once for the vertical component since we're assuming rectified images with horizontal stereopsis
-          const Eigen::Vector3d error(image_coordinates_moving_left.x() - current_point->keypoint_left.pt.x,
-                                      image_coordinates_moving_left.y() - current_point->keypoint_left.pt.y,
-                                      image_coordinates_moving_right.x() - current_point->keypoint_right.pt.x);
+          const Eigen::Vector3d error(image_coordinates_moving_left.x() - current_point->feature_left.keypoint.pt.x,
+                                      image_coordinates_moving_left.y() - current_point->feature_left.keypoint.pt.y,
+                                      image_coordinates_moving_right.x() - current_point->feature_right.keypoint.pt.x);
 
           //ds weight horizontal error twice (since in fact the error stems from two measurements)
           omega(1,1) *= 2;
@@ -453,7 +464,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
       //ds draw tracks on image
       for (const Framepoint* current_point: current_points) {
-        cv::line(image_display, current_point->keypoint_left.pt, current_point->previous->keypoint_left.pt, cv::Scalar(0, 255, 0));
+        cv::line(image_display, current_point->feature_left.keypoint.pt, current_point->previous->feature_left.keypoint.pt, cv::Scalar(0, 255, 0));
       }
     } else {
       std::cerr << "read image: " << file_name_image_current_left << " | " << file_name_image_current_right
@@ -463,7 +474,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
     //ds draw currently detected points
     for (Framepoint* framepoint: current_points) {
-      cv::circle(image_display, framepoint->keypoint_left.pt, 2, cv::Scalar(255, 0, 0), -1);
+      cv::circle(image_display, framepoint->feature_left.keypoint.pt, 2, cv::Scalar(255, 0, 0), -1);
     }
     cv::imshow("current image", image_display);
     cv::waitKey(1);
@@ -626,13 +637,9 @@ Eigen::Matrix3d skew(const Eigen::Vector3d& p){
 
 std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calibration_matrix_,
                                              const Eigen::Vector3d& offset_to_camera_right_,
-                                             const std::vector<cv::KeyPoint>& keypoints_left_,
-                                             const std::vector<cv::KeyPoint>& keypoints_right_,
-                                             const cv::Mat& descriptors_left_,
-                                             const cv::Mat& descriptors_right_,
+                                             std::vector<KeypointWithDescriptor>& features_left_,
+                                             std::vector<KeypointWithDescriptor>& features_right_,
                                              const uint32_t& maximum_descriptor_distance_) {
-  std::vector<Framepoint*> points(descriptors_left_.rows);
-  uint32_t number_of_triangulated_points = 0;
 
   //ds configuration
   const double b_u = -offset_to_camera_right_(0);
@@ -640,45 +647,80 @@ std::vector<Framepoint*> getPointsFromStereo(const Eigen::Matrix3d& camera_calib
   const double c_u = camera_calibration_matrix_(0, 2);
   const double c_v = camera_calibration_matrix_(1, 2);
 
-  //ds perform stereo matching using a temporary HBST - the left descriptors are the reference
-  Tree tree_left(descriptors_left_);
-  MatchVector stereo_matches;
-  tree_left.match(descriptors_right_, stereo_matches, maximum_descriptor_distance_);
+  //ds running variable
+  uint32_t index_R = 0;
 
-  //ds for each stereo match
-  for (const Match& match: stereo_matches) {
-    const uint32_t& index_left              = match.identifier_reference;
-    const uint32_t& index_right             = match.identifier_query;
-    const cv::Point2d& point_in_image_left  = keypoints_left_[index_left].pt;
-    const cv::Point2d& point_in_image_right = keypoints_right_[index_right].pt;
+  //ds initialize search
+  std::vector<Framepoint*> points(features_left_.size());
+  uint32_t number_of_triangulated_points = 0;
 
-    //ds skip if not on horizontal epipolar line
-    if (point_in_image_left.y != point_in_image_right.y) {
-      continue;
+  //ds sort all input vectors by ascending row positions
+  std::sort(features_left_.begin(), features_left_.end(),
+            [](const KeypointWithDescriptor& a_, const KeypointWithDescriptor& b_){return ((a_.keypoint.pt.y < b_.keypoint.pt.y) ||
+                                                                                           (a_.keypoint.pt.y == b_.keypoint.pt.y && a_.keypoint.pt.x < b_.keypoint.pt.x));});
+  std::sort(features_right_.begin(), features_right_.end(),
+            [](const KeypointWithDescriptor& a_, const KeypointWithDescriptor& b_){return ((a_.keypoint.pt.y < b_.keypoint.pt.y) ||
+                                                                                           (a_.keypoint.pt.y == b_.keypoint.pt.y && a_.keypoint.pt.x < b_.keypoint.pt.x));});
+
+  //ds loop over all left keypoints
+  for (uint32_t index_L = 0; index_L < features_left_.size(); index_L++) {
+
+    //ds if there are no more points on the right to match against - stop
+    if (index_R == features_right_.size()) {break;}
+    //the right keypoints are on an lower row - skip left
+    while (features_left_[index_L].keypoint.pt.y < features_right_[index_R].keypoint.pt.y) {
+      index_L++; if (index_L == features_left_.size()) {break;}
     }
+    if (index_L == features_left_.size()) {break;}
+    //the right keypoints are on an upper row - skip right
+    while (features_left_[index_L].keypoint.pt.y > features_right_[index_R].keypoint.pt.y) {
+      index_R++; if (index_R == features_right_.size()) {break;}
+    }
+    if (index_R == features_right_.size()) {break;}
+    //search bookkeeping
+    uint32_t index_search_R = index_R;
+    uint32_t distance_best  = maximum_descriptor_distance_;
+    uint32_t index_best_R   = 0;
+    //scan epipolar line for current keypoint at idx_L
+    while (features_left_[index_L].keypoint.pt.y == features_right_[index_search_R].keypoint.pt.y) {
+      //zero disparity stop condition
+      if (features_right_[index_search_R].keypoint.pt.x >= features_left_[index_L].keypoint.pt.x) {break;}
 
-    //ds compute disparity
-    const double disparity_pixels = point_in_image_left.x-point_in_image_right.x;
+      //ds compute descriptor distance for the stereo match candidates
+      const uint32_t distance_hamming = cv::norm(features_left_[index_L].descriptor, features_right_[index_search_R].descriptor, cv::NORM_HAMMING);
+      if(distance_hamming < distance_best) {
+        distance_best = distance_hamming;
+        index_best_R  = index_search_R;
+      }
+      index_search_R++; if (index_search_R == features_right_.size()) {break;}
+    }
+    //check if something was found
+    if (distance_best < maximum_descriptor_distance_) {
 
-    //ds if disparity is sufficient
-    if (disparity_pixels > 0) {
+      //ds compute disparity
+      const double disparity_pixels = features_left_[index_L].keypoint.pt.x-features_right_[index_best_R].keypoint.pt.x;
 
-      //ds compute depth from disparity
-      const float depth_meters = b_u/disparity_pixels;
+      //ds if disparity is sufficient
+      if (disparity_pixels > 0) {
 
-      //ds compute full point
-      const float depth_meters_per_pixel = depth_meters/f_u;
-      const Eigen::Vector3d point_in_camera(depth_meters_per_pixel*(point_in_image_left.x-c_u),
-                                            depth_meters_per_pixel*(point_in_image_left.y-c_v),
-                                            depth_meters);
+        //ds compute depth from disparity
+        const double depth_meters = b_u/disparity_pixels;
 
-      //ds add the point
-      points[number_of_triangulated_points] = new Framepoint(keypoints_left_[index_left],
-                                                             keypoints_right_[index_right],
-                                                             descriptors_left_.row(index_left),
-                                                             descriptors_right_.row(index_right),
-                                                             point_in_camera);
-      ++number_of_triangulated_points;
+        //ds compute full point
+        const double depth_meters_per_pixel = depth_meters/f_u;
+        const Eigen::Vector3d point_in_camera(depth_meters_per_pixel*(features_left_[index_L].keypoint.pt.x-c_u),
+                                              depth_meters_per_pixel*(features_left_[index_L].keypoint.pt.y-c_v),
+                                              depth_meters);
+
+        //ds add the point
+        points[number_of_triangulated_points] = new Framepoint(features_left_[index_L],
+                                                               features_right_[index_best_R],
+                                                               point_in_camera);
+        ++number_of_triangulated_points;
+
+        //ds reduce search space
+        index_R = index_best_R+1;
+      }
     }
   }
   points.resize(number_of_triangulated_points);
