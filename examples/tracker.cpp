@@ -79,7 +79,7 @@ int32_t main(int32_t argc_, char** argv_) {
       break;
     }
     case ProcessingMode::Video: {
-      if (!video_player.open(input_source, cv::CAP_FFMPEG)) {
+      if (!video_player.open(input_source)) {
         std::cerr << "ERROR: invalid test image path provided: " << input_source << std::endl;
       }
       break;

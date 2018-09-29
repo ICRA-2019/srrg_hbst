@@ -126,11 +126,6 @@ int32_t main(int32_t argc, char** argv) {
   std::printf("average query matching ratio: %6.4f\n", matching_ratio/(10*10));
   std::cerr << "------------------------------------------------" << std::endl;
 
-#if CV_MAJOR_VERSION == 2
-  delete keypoint_detector;
-  delete descriptor_extractor;
-#endif
-
   //ds fight memory leaks!
   for (const BinaryTree256* tree: trees) {
     delete tree;
