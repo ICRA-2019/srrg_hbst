@@ -88,6 +88,9 @@ Based on the 3D camera positions and the measured 2D image positions of the feat
 The system experiences tolerable drift, resulting from the dead reckoning motion estimation scheme. <br>
 The scale is estimated correctly thanks to the available rigid stereo triangulation (assuming a majority of correct triangulation pairs).
 
+Currently, for both examples (mono/bino) only pose optimization through projective ICP is performed and not actual smoothing (of multiple poses/map). <br>
+The Gauss-Newton code section will be adjusted accordingly to perform smoothing in future versions.
+
 ### ROS (in combination with catkin)
 We provide our example applications also in the form of ROS nodes, enabling easy integration.
 The available nodes are:
