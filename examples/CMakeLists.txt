@@ -7,28 +7,28 @@ if(SRRG_HBST_HAS_OPENCV)
   target_link_libraries(match ${OpenCV_LIBS})
   target_link_libraries(match_incremental ${OpenCV_LIBS})
   
-  add_executable(match_opencv_indices match_opencv_indices.cpp)
+  add_executable(match_opencv_indices opencv/match_opencv_indices.cpp)
   target_link_libraries(match_opencv_indices ${OpenCV_LIBS})
   
-  add_executable(match_opencv_pointers match_opencv_pointers.cpp)
+  add_executable(match_opencv_pointers opencv/match_opencv_pointers.cpp)
   target_link_libraries(match_opencv_pointers ${OpenCV_LIBS})
   
-  add_executable(match_incremental_opencv_pointers match_incremental_opencv_pointers.cpp)
+  add_executable(match_incremental_opencv_pointers opencv/match_incremental_opencv_pointers.cpp)
   target_link_libraries(match_incremental_opencv_pointers ${OpenCV_LIBS})
   
-  add_executable(match_incremental_opencv_score match_incremental_opencv_score.cpp)
+  add_executable(match_incremental_opencv_score opencv/match_incremental_opencv_score.cpp)
   target_link_libraries(match_incremental_opencv_score ${OpenCV_LIBS})
   
-  add_executable(tracker tracker.cpp)
+  add_executable(tracker opencv/tracker.cpp)
   target_link_libraries(tracker ${OpenCV_LIBS})
   
-    add_executable(recognizer recognizer.cpp)
+  add_executable(recognizer opencv/recognizer.cpp)
   target_link_libraries(recognizer ${OpenCV_LIBS})
 endif()
 
 #ds if we found an eigen installation
 if(SRRG_HBST_HAS_EIGEN)
-  add_executable(match_probabilistic match_probabilistic.cpp)
+  add_executable(match_probabilistic eigen/match_probabilistic.cpp)
   
   #ds and an opencv installation
   if(SRRG_HBST_HAS_OPENCV)
@@ -42,7 +42,7 @@ if(SRRG_HBST_HAS_EIGEN)
       
       #ds monocular smoother example - only opencv3 supported - TODO support for opencv2
       if ("${OpenCV_VERSION_MAJOR}" STREQUAL "3")
-        add_executable(smoother_monocular smoother_monocular.cpp)
+        add_executable(smoother_monocular opencv_and_eigen/smoother_monocular.cpp)
         target_link_libraries(smoother_monocular 
           ${OpenCV_LIBS} 
           ${QGLVIEWER_LIBRARY} 
@@ -52,7 +52,7 @@ if(SRRG_HBST_HAS_EIGEN)
       endif()
       
       #ds binocular smoother example - opencv2 and opencv3 supported
-      add_executable(smoother_binocular smoother_binocular.cpp)
+      add_executable(smoother_binocular opencv_and_eigen/smoother_binocular.cpp)
       target_link_libraries(smoother_binocular 
         ${OpenCV_LIBS} 
         ${QGLVIEWER_LIBRARY} 
@@ -65,7 +65,6 @@ endif()
 
 #ds if we found a ROS installation
 if(SRRG_HBST_HAS_ROS AND SRRG_HBST_HAS_OPENCV)
-  add_executable(recognizer_node recognizer_node.cpp)
+  add_executable(recognizer_node ros/recognizer_node.cpp)
   target_link_libraries(recognizer_node ${OpenCV_LIBS} ${catkin_LIBRARIES})
 endif()
-

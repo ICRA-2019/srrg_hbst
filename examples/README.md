@@ -12,11 +12,12 @@ Alternatively one can build only *a single tree* that is incrementally grown for
 Note that the above executables required to be run from the `build` folder or alternatively via `rosrun srrg_hbst`. <br>
 None of the above examples require OpenCV or Eigen.
 
-## OpenCV:
+## OpenCV (2/3):
 The HBST library already shipps with OpenCV2/3 wrappers. <br>
 The following 4 examples demonstrate the descriptor matching performance for a set of 10 test images. <br>
 In each example we compute a set of input descriptors using standard OpenCV feature detectors and descriptor extractors. <br>
-To visualize the obtained correspondences we link them with our Matchables using `indices` or `pointers`.
+To visualize the obtained correspondences we link them with our Matchables using `indices` or `pointers`. <br>
+All of the example applications are located in the `opencv` directory.
 
 For the individual trees we have an example with indices:
 
@@ -51,14 +52,15 @@ Furthermore we provide a live visual place recognition application:
 Which displays computed features for the current image (blue) and highlights them (green) in case they have been matched against a feature from a database image. <br>
 The parameter `-space` controls the minimum number of images that have to lie between the current image and the database image (e.g. 100).
 
-## Eigen:
-More robust descriptor track based tree construction can be inspected in:
+## Eigen (3):
+More robust descriptor track based tree construction can be inspected in the directory `eigen`:
 
     match_probabilistic
 
-## Eigen, OpenCV and QGLViewer:
+## Eigen (3), OpenCV (2/3) and QGLViewer:
 For now, only processing of the raw [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) is supported. <br>
 Note that for building these examples, the [libQGLViewer](http://libqglviewer.com/) library is required.
+The target directory is `opencv_and_eigen`.
 
 An example dataset sequence is available at: [kitti_sequence_00](https://drive.google.com/open?id=1KPay-nqVXvj5Ht6lfF0KdILQpN97AbRX) (2.3GB, courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php))
 
@@ -93,7 +95,7 @@ The Gauss-Newton code section will be adjusted accordingly to perform smoothing 
 
 ### ROS (in combination with catkin)
 We provide our example applications also in the form of ROS nodes, enabling easy integration.
-The available nodes are:
+The available nodes in the `ros` directory are:
 
     rosun srrg_hbst recognizer_node -camera <ROS/camera/topic> -space <integer>
     

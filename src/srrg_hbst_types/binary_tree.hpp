@@ -148,6 +148,12 @@ public:
 //ds access
 public:
 
+  //! @brief returns database size (i.e. the number of added images/matchable vectors with unique identifiers)
+  //! @returns number of added reference matchable vectors
+  const size_t size() const {
+    return _added_identifiers_train.size();
+  }
+
   const uint64_t getNumberOfMatches(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
     if (matchables_query_.empty()) {
       return 0;

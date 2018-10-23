@@ -1,14 +1,7 @@
 #include <iostream>
 #include "srrg_hbst_types/binary_tree.hpp"
 
-#if CV_MAJOR_VERSION == 2
-#elif CV_MAJOR_VERSION == 3
-  #include <opencv2/xfeatures2d.hpp>
-#else
-  #error OpenCV version not supported
-#endif
-
-//ds keep it readable
+//ds keeping it readable
 using namespace srrg_hbst;
 
 
@@ -63,9 +56,11 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image_query, keypoints, descriptors);
     std::cerr << "loaded image: " << index_image_query << " with keypoints/descriptors: " << descriptors.rows << std::endl;
 
-    //ds allocate keypoints dynamically on the heap, we want to link them against our matchables and need access after leaving this scope
-    BinaryTree256::MatchableVector matchables_query(descriptors.rows);
+    //ds allocate keypoints dynamically on the heap
+    //ds we want to link them against our matchables and need access after leaving this scope
+    //ds for each keypoint - descriptor pair we allocate a matchable to put into the tree
     keypoints_per_image[index_image_query].resize(descriptors.rows);
+    BinaryTree256::MatchableVector matchables_query(descriptors.rows);
     for (uint64_t u = 0; u < static_cast<uint64_t>(descriptors.rows); ++u) {
       const cv::KeyPoint* keypoint = new cv::KeyPoint(keypoints[u]);
       keypoints_per_image[index_image_query][u] = keypoint;
