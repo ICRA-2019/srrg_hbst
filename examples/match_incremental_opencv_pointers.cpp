@@ -1,6 +1,4 @@
 #include <iostream>
-#include <chrono>
-#include <ctime>
 #include "srrg_hbst_types/binary_tree.hpp"
 
 #if CV_MAJOR_VERSION == 2
@@ -10,23 +8,8 @@
   #error OpenCV version not supported
 #endif
 
-//ds current setup
-#define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
-typedef srrg_hbst::BinaryNode<Matchable> Node;
-typedef srrg_hbst::BinaryNode<Matchable>::MatchableVector MatchableVector;
-typedef srrg_hbst::BinaryTree<Node> Tree;
-
-//ds feature handling
-cv::Ptr<cv::FeatureDetector> keypoint_detector;
-cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
-
-//ds buffers
-std::vector<cv::Mat> images(10);
-std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(10);
-
-//ds retrieves HBST matchables from an opencv image stored at the provided location
-const MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
+//ds keep it readable
+using namespace srrg_hbst;
 
 
 
@@ -40,127 +23,108 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds feature handling
 #if CV_MAJOR_VERSION == 2
-  keypoint_detector    = new cv::FastFeatureDetector();
-  descriptor_extractor = new cv::ORB();
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = new cv::FastFeatureDetector();
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = new cv::ORB();
 #elif CV_MAJOR_VERSION == 3
-  keypoint_detector    = cv::FastFeatureDetector::create();
-  descriptor_extractor = cv::ORB::create();
+  cv::Ptr<cv::FeatureDetector> keypoint_detector        = cv::FastFeatureDetector::create();
+  cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::ORB::create();
 #endif
 
-  //ds measurements
-  std::chrono::time_point<std::chrono::system_clock> time_begin;
-  std::chrono::duration<double> duration_query(0);
-  double cumulative_matching_ratio = 0;
+  //ds configuration
   const uint32_t maximum_matching_distance = 25;
-
-  //ds get test image path
-  const std::string test_images_folder = argv_[1];
-
-  //ds number of test images
-  const uint32_t number_of_images = 10;
-
-  //ds fill matchables vector for each image
-  std::vector<MatchableVector> matchables_per_image(number_of_images);
-  for (uint32_t u = 0; u < number_of_images; ++u) {
-
-    //ds load matchables
-    char buffer[32];
-    std::sprintf(buffer, "image_%02u.pgm", u);
-    const std::string file_test_image = test_images_folder + "/" + buffer;
-    matchables_per_image[u] = getMatchables(file_test_image, u);
-  }
+  const std::string test_images_folder     = argv_[1];
+  const uint32_t number_of_images          = 10;
 
   //ds create HBST database
   std::printf("allocating empty tree\n");
-  Tree hbst_tree;
+  BinaryTree256 database;
+
+  //ds bookkeeping for visualization/stats
+  std::vector<cv::Mat> images(number_of_images);
+  std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(number_of_images);
+  std::vector<BinaryTree256::MatchableVector> matchables_per_image(number_of_images);
 
   //ds check each image against each other and itself (100% ratio)
   std::printf("starting matching and adding with maximum distance: %u \n", maximum_matching_distance);
   std::printf("------------[ press any key to step ]------------\n");
-  for (uint32_t index_query = 0; index_query < number_of_images; ++index_query) {
+  for (uint32_t index_image_query = 0; index_image_query < number_of_images; ++index_image_query) {
 
-    //ds query HBST with image 1
-    Tree::MatchVectorMap matches;
-    time_begin = std::chrono::system_clock::now();
-    hbst_tree.matchAndAdd(matchables_per_image[index_query], matches, maximum_matching_distance);
-    duration_query += std::chrono::system_clock::now()-time_begin;
+    //ds load image from disk
+    char buffer[32];
+    std::sprintf(buffer, "image_%02u.pgm", index_image_query);
+    const cv::Mat image_query = cv::imread(test_images_folder + "/" + buffer, CV_LOAD_IMAGE_GRAYSCALE);
+
+    //ds detect FAST keypoints
+    std::vector<cv::KeyPoint> keypoints;
+    keypoint_detector->detect(image_query, keypoints);
+
+    //ds compute BRIEF descriptors
+    cv::Mat descriptors;
+    descriptor_extractor->compute(image_query, keypoints, descriptors);
+    std::cerr << "loaded image: " << index_image_query << " with keypoints/descriptors: " << descriptors.rows << std::endl;
+
+    //ds allocate keypoints dynamically on the heap, we want to link them against our matchables and need access after leaving this scope
+    BinaryTree256::MatchableVector matchables_query(descriptors.rows);
+    keypoints_per_image[index_image_query].resize(descriptors.rows);
+    for (uint64_t u = 0; u < static_cast<uint64_t>(descriptors.rows); ++u) {
+      const cv::KeyPoint* keypoint = new cv::KeyPoint(keypoints[u]);
+      keypoints_per_image[index_image_query][u] = keypoint;
+      matchables_query[u] = new BinaryTree256::Matchable(static_cast<const void*>(keypoint), descriptors.row(u), index_image_query);
+    }
+
+    //ds query HBST with current image and add the descriptors subsequently
+    BinaryTree256::MatchVectorMap matches_per_reference_image;
+    database.matchAndAdd(matchables_query, matches_per_reference_image, maximum_matching_distance);
 
     //ds check all match vectors in the map
-    for (const Tree::MatchVectorMapElement& match_vector: matches) {
-      const uint64_t& index_reference = match_vector.first;
+    for (const BinaryTree256::MatchVectorMapElement& match_vector: matches_per_reference_image) {
+      const uint64_t& index_image_reference     = match_vector.first;
+      const BinaryTree256::MatchVector& matches = match_vector.second;
+      const uint64_t number_of_matches          = matches.size();
 
-      //ds compute matching ratio
-      const double matching_ratio = static_cast<double>(matches.at(index_reference).size())/matchables_per_image[index_reference].size();
-
-      //ds check approximate matching ratio
-
+      //ds compute matching ratio/score for this reference image
+      const double score = static_cast<double>(number_of_matches)/matchables_per_image[index_image_reference].size();
       std::printf("matches for QUERY [%02u] to REFERENCE [%02lu]: %4lu (matching ratio: %5.3f)\n",
-                  index_query, index_reference, matches.at(index_reference).size(), matching_ratio);
-      cumulative_matching_ratio += matching_ratio;
+                  index_image_query, index_image_reference, number_of_matches, score);
 
       //ds show the matching in an image pair
       cv::Mat image_display;
-      cv::vconcat(images[index_query], images[index_reference], image_display);
+      cv::vconcat(image_query, images[index_image_reference], image_display);
       cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
 
       //ds shift to lower image
-      cv::Point2f shift(0, images[index_query].rows);
+      const cv::Point2f shift(0, image_query.rows);
 
-      //ds draw correspondences
-      for (const Tree::Match& match: matches.at(index_reference)) {
+      //ds draw correspondences - for each match
+      for (const BinaryTree256::Match& match: matches) {
 
         //ds directly get the keypoint objects
         const cv::KeyPoint* keypoint_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
         const cv::KeyPoint* keypoint_reference = static_cast<const cv::KeyPoint*>(match.pointer_reference);
 
-        //ds draw correspondence
+        //ds draw correspondence line between images
         cv::line(image_display, keypoint_query->pt, keypoint_reference->pt+shift, cv::Scalar(0, 255, 0));
 
-        //ds draw reference point in upper image
+        //ds draw query point in upper image
         cv::circle(image_display, keypoint_query->pt, 2, cv::Scalar(255, 0, 0));
 
-        //ds draw query point in lower image
+        //ds draw reference point in lower image
         cv::circle(image_display, keypoint_reference->pt+shift, 2, cv::Scalar(0, 0, 255));
       }
       cv::imshow("matching (top: QUERY, bot: REFERENCE)", image_display);
       cv::waitKey(0);
     }
+
+    //ds bookkeep image and matchables for display
+    images[index_image_query]               = image_query;
+    matchables_per_image[index_image_query] = matchables_query;
   }
 
-  //ds statistics summary
-  std::cerr << "------------------------------------------------" << std::endl;
-  std::printf("average query duration matches (s): %6.4f\n", duration_query.count()/number_of_images);
-  std::printf("      average query matching ratio: %6.4f\n", cumulative_matching_ratio/(number_of_images*number_of_images));
-  std::cerr << "------------------------------------------------" << std::endl;
+  //ds free the keypoints - the matchables are freed by the tree which takes ownership when added
   for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
     for (const cv::KeyPoint* keypoint: keypoints) {
       delete keypoint;
     }
   }
   return 0;
-}
-
-const MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
-
-  //ds allocate empty matchable vector
-  MatchableVector matchables(0);
-
-  //ds load image (project root folder)
-  images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
-
-  //ds detect FAST keypoints
-  std::vector<cv::KeyPoint> keypoints;
-  keypoint_detector->detect(images[identifier_tree_], keypoints);
-
-  //ds compute BRIEF descriptors
-  cv::Mat descriptors;
-  descriptor_extractor->compute(images[identifier_tree_], keypoints, descriptors);
-  std::cerr << "loaded image: " << filename_image_ << " with keypoints/descriptors: " << descriptors.rows << std::endl;
-  for (const cv::KeyPoint& keypoint: keypoints) {
-    cv::KeyPoint* linked_keypoint = new cv::KeyPoint(keypoint);
-    keypoints_per_image[identifier_tree_].push_back(linked_keypoint);
-  }
-
-  //ds get descriptors to HBST format
-  return Tree::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_], identifier_tree_);
 }
