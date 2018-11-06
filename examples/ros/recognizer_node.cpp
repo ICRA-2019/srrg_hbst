@@ -154,7 +154,7 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
 
           //ds draw matched descriptors
           for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-            const cv::KeyPoint* point_query     = static_cast<const cv::KeyPoint*>(match.pointer_query);
+            cv::KeyPoint* point_query     = static_cast<cv::KeyPoint*>(match.pointer_query);
             cv::circle(image_display, point_query->pt, 2, cv::Scalar(0, 255, 0), -1);
           }
         }

@@ -212,9 +212,9 @@ int32_t main(int32_t argc_, char** argv_) {
       std::set<Framepoint*> linked_previous;
       for (uint32_t u = 0; u < current_points.size(); ++u) {
 
-        //ds mother of all EVIL casts in 'c++' TODO maybe adjust library
-        Framepoint* current_point  = const_cast<Framepoint*>(static_cast<const Framepoint*>(matches[u].pointer_query));
-        Framepoint* previous_point = const_cast<Framepoint*>(static_cast<const Framepoint*>(matches[u].pointer_reference));
+        //ds obtain linked framepoints
+        Framepoint* current_point  = static_cast<Framepoint*>(matches[u].pointer_query);
+        Framepoint* previous_point = static_cast<Framepoint*>(matches[u].pointer_reference);
 
         //ds cross-check if we not already matched against this previous point TODO enable cross-check in HBST
         if (linked_previous.count(previous_point)) {

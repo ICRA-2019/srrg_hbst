@@ -253,8 +253,8 @@ int32_t main(int32_t argc_, char** argv_) {
       for (uint32_t u = 0; u < matches.size(); ++u) {
 
         //ds retrieve framepoint pair
-        Framepoint* current_point  = reinterpret_cast<Framepoint*>(matches[u].pointer_query);
-        Framepoint* previous_point = reinterpret_cast<Framepoint*>(matches[u].pointer_reference);
+        Framepoint* current_point  = static_cast<Framepoint*>(matches[u].pointer_query);
+        Framepoint* previous_point = static_cast<Framepoint*>(matches[u].pointer_reference);
 
         //ds cross-check if we not already matched against this previous point TODO enable cross-check in HBST
         if (linked_previous.count(previous_point)) {

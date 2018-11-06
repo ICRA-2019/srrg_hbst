@@ -736,7 +736,7 @@ public:
 
     //ds copy raw data
     for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(reinterpret_cast<void*>(pointers_[index_descriptor]), descriptors_cv_.row(index_descriptor), identifier_tree_);
+      matchables[index_descriptor] = new Matchable(static_cast<void*>(pointers_[index_descriptor]), descriptors_cv_.row(index_descriptor), identifier_tree_);
     }
     return matchables;
   }
