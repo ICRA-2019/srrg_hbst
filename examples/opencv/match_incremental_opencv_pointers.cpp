@@ -62,9 +62,9 @@ int32_t main(int32_t argc_, char** argv_) {
     keypoints_per_image[index_image_query].resize(descriptors.rows);
     BinaryTree256::MatchableVector matchables_query(descriptors.rows);
     for (uint64_t u = 0; u < static_cast<uint64_t>(descriptors.rows); ++u) {
-      const cv::KeyPoint* keypoint = new cv::KeyPoint(keypoints[u]);
+      cv::KeyPoint* keypoint = new cv::KeyPoint(keypoints[u]);
       keypoints_per_image[index_image_query][u] = keypoint;
-      matchables_query[u] = new BinaryTree256::Matchable(static_cast<const void*>(keypoint), descriptors.row(u), index_image_query);
+      matchables_query[u] = new BinaryTree256::Matchable(static_cast<void*>(keypoint), descriptors.row(u), index_image_query);
     }
 
     //ds query HBST with current image and add the descriptors subsequently

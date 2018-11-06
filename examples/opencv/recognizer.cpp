@@ -160,13 +160,13 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image, keypoints, descriptors);
 
     //ds allocate keypoints manually in memory (we will directly link to them with our HBST matchables, avoiding any auxiliary bookkeeping)
-    std::vector<const cv::KeyPoint*> keypoints_addresses(keypoints.size());
+    std::vector<cv::KeyPoint*> keypoints_addresses(keypoints.size());
     for (uint32_t u = 0; u < keypoints.size(); ++u) {
       keypoints_addresses[u] = &keypoints[u];
     }
 
     //ds obtain linked matchables
-    const Tree::MatchableVector matchables(Tree::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_addresses, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchablesWithPointer<cv::KeyPoint*>(descriptors, keypoints_addresses, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far) and integrate them simultaneously
     Tree::MatchVectorMap matches_per_image;

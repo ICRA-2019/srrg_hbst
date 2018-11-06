@@ -24,7 +24,7 @@ class BinaryNode
 public:
 
   typedef BinaryMatchableType_ Matchable;
-  typedef std::vector<const Matchable*> MatchableVector;
+  typedef std::vector<Matchable*> MatchableVector;
   typedef typename Matchable::Descriptor Descriptor;
   typedef real_type_ real_type;
   typedef BinaryMatch<Matchable, real_type> Match;
@@ -45,8 +45,11 @@ public:
   //ds this is required, since we do not want to trigger the automatic leaf spawning of the baseclass in a subclass
   BinaryNode() {}
 
-  //ds destructor: nothing to do (the contained matchables will be freed by the tree)
-  virtual ~BinaryNode() {}
+  //ds destructor: recursive destruction of child nodes (risky but readable)
+  virtual ~BinaryNode() {
+    delete left;
+    delete right;
+  }
 
 //ds access
 public:
@@ -169,19 +172,23 @@ public:
       bit_mask_previous[index_split_bit] = 0;
 
       //ds first we have to split the descriptors by the found index - preallocate vectors since we know how many ones we have
-      MatchableVector matchables_ones;
-      matchables_ones.reserve(number_of_on_bits_total);
-      MatchableVector matchables_zeros;
-      matchables_zeros.reserve(matchables.size( )-number_of_on_bits_total);
+      MatchableVector matchables_ones(number_of_on_bits_total);
+      MatchableVector matchables_zeros(matchables.size()-number_of_on_bits_total);
 
       //ds loop over all descriptors and assigning them to the new vectors based on bit status
-      for (const Matchable* matchable: matchables) {
-        if ( matchable->descriptor[index_split_bit] ) {
-          matchables_ones.push_back(matchable);
+      uint64_t index_ones  = 0;
+      uint64_t index_zeros = 0;
+      for (Matchable* matchable: matchables) {
+        if (matchable->descriptor[index_split_bit]) {
+          matchables_ones[index_ones] = matchable;
+          ++index_ones;
         } else {
-          matchables_zeros.push_back(matchable);
+          matchables_zeros[index_zeros] = matchable;
+          ++index_zeros;
         }
       }
+      assert(matchables_ones.size() == index_ones);
+      assert(matchables_zeros.size() == index_zeros);
 
       //ds if there are elements for leaves
       assert(0 < matchables_ones.size());
@@ -269,13 +276,13 @@ public:
   Descriptor bit_mask;
 
   //! @brief leaf containing all unset bits
-  Node* left = 0;
+  Node* left = nullptr;
 
   //! @brief leaf containing all set bits
-  Node* right = 0;
+  Node* right = nullptr;
 
   //! @brief parent node (if any, for root:parent=0)
-  Node* parent = 0;
+  Node* parent = nullptr;
 
   //! @brief maximum tree depth (leaf spwaning blocks if reached, default: descriptor dimension)
   static uint32_t maximum_depth;

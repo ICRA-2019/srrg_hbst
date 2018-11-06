@@ -18,7 +18,7 @@ cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
 //ds buffers
 std::vector<cv::Mat> images(10);
-std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(10);
+std::vector<std::vector<cv::KeyPoint*>> keypoints_per_image(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
 const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
@@ -131,8 +131,8 @@ int32_t main(int32_t argc, char** argv) {
     delete tree;
   }
   matchables_per_image.clear();
-  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
-    for (const cv::KeyPoint* keypoint: keypoints) {
+  for (const std::vector<cv::KeyPoint*>& keypoints: keypoints_per_image) {
+    for (cv::KeyPoint* keypoint: keypoints) {
       delete keypoint;
     }
   }
@@ -163,5 +163,5 @@ const BinaryTree256::MatchableVector getMatchables(const std::string& filename_i
   }
 
   //ds get descriptors to HBST format
-  return BinaryTree256::getMatchablesWithPointer<const cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_]);
+  return BinaryTree256::getMatchablesWithPointer<cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_]);
 }

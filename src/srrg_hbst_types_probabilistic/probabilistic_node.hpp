@@ -16,17 +16,17 @@ class ProbabilisticNode: public BinaryNode<ProbabilisticMatchableType_, real_pre
 public: EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typedef ProbabilisticMatchableType_ Matchable;
-  typedef typename ProbabilisticMatchableType_::Descriptor Descriptor;
-  typedef std::vector<const ProbabilisticMatchableType_*> MatchableVector;
-  typedef BinaryMatch<ProbabilisticMatchableType_, real_precision_> Match;
+  typedef typename Matchable::Descriptor Descriptor;
+  typedef std::vector<Matchable*> MatchableVector;
   typedef real_precision_ precision;
-  typedef typename ProbabilisticMatchableType_::BitStatisticsVector BitStatisticsVector;
+  typedef BinaryMatch<Matchable, precision> Match;
+  typedef typename Matchable::BitStatisticsVector BitStatisticsVector;
 
 //ds ctor/dtor
 public:
 
   //ds access only through this constructor: no mask provided
-  ProbabilisticNode(const std::vector<const Matchable*>& matchables_,
+  ProbabilisticNode(const MatchableVector& matchables_,
                     const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): Node(0, matchables_, Descriptor().set(), train_mode_) {}
 
   //ds the default constructor is triggered by subclasses - the responsibility of attribute initialization is left to the subclass
@@ -116,13 +116,13 @@ public:
           mask[this->index_split_bit] = 0;
 
           //ds first we have to split the descriptors by the found index - preallocate vectors since we know how many ones we have
-          std::vector<const Matchable*> matchables_leaf_ones;
+          MatchableVector matchables_leaf_ones;
           matchables_leaf_ones.reserve(this->number_of_on_bits_total);
-          std::vector<const Matchable*> matchables_leaf_zeroes;
+          MatchableVector matchables_leaf_zeroes;
           matchables_leaf_zeroes.reserve(number_of_matchables-this->number_of_on_bits_total);
 
           //ds loop over all descriptors and assing them to the new vectors
-          for(const Matchable* matchable: this->matchables) {
+          for(Matchable* matchable: this->matchables) {
 
             //ds check if split bit is set
             if(matchable->descriptor[this->index_split_bit]) {

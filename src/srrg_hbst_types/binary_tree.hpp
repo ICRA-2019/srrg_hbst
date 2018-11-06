@@ -33,9 +33,9 @@ public:
 
   //! @brief component object used for tree training
   struct Trainable {
-    Node* node                 = 0;
-    const Matchable* matchable = nullptr;
-    bool spawn_leafs           = false;
+    Node* node           = nullptr;
+    Matchable* matchable = nullptr;
+    bool spawn_leafs     = false;
   };
 
   //! @brief image score for a reference image (added)
@@ -498,7 +498,7 @@ public:
     //ds for each new descriptor - buffering new matchables and merging identical ones
     uint64_t index_new_matchable = 0;
     for (uint64_t index_matchable = 0; index_matchable < _matchables_to_train.size(); ++index_matchable) {
-      const Matchable* matchable_to_insert = _matchables_to_train[index_matchable];
+      Matchable* matchable_to_insert = _matchables_to_train[index_matchable];
 
       //ds traverse tree to find a leaf for this descriptor
       Node* node = _root;
@@ -598,7 +598,7 @@ public:
 
     //ds for each descriptor
     uint64_t index_trainable = 0;
-    for(const Matchable* matchable_query: matchables_) {
+    for(Matchable* matchable_query: matchables_) {
 
       //ds traverse tree to find this descriptor
       Node* node_current = _root;
@@ -736,7 +736,7 @@ public:
 
     //ds copy raw data
     for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(reinterpret_cast<const void*>(pointers_[index_descriptor]), descriptors_cv_.row(index_descriptor), identifier_tree_);
+      matchables[index_descriptor] = new Matchable(reinterpret_cast<void*>(pointers_[index_descriptor]), descriptors_cv_.row(index_descriptor), identifier_tree_);
     }
     return matchables;
   }
@@ -774,10 +774,12 @@ public:
   //! @brief clears complete structure (corresponds to empty construction)
   virtual void clear(const bool& delete_matchables_ = true) {
 
-    //ds own structures
-    clearNodes();
+    //ds internal bookkeeping
     _added_identifiers_train.clear();
     _trainables.clear();
+
+    //ds recursively delete all nodes
+    delete _root;
     _root = nullptr;
 
     //ds ownership dependent
@@ -786,23 +788,6 @@ public:
     }
     _matchables.clear();
     _matchables_to_train.clear();
-  }
-
-  //! @brief free all tree nodes (destructor)
-  virtual void clearNodes() {
-    if (!_root) {return;}
-
-    //ds nodes holder
-    std::vector<const Node*> nodes_collection;
-
-    //ds set vector
-    _setNodesRecursive(_root, nodes_collection);
-
-    //ds free nodes
-    for (const Node* node: nodes_collection) {
-      delete node;
-    }
-    nodes_collection.clear();
   }
 
   //! @brief free all matchables contained in the tree (destructor)
@@ -854,26 +839,6 @@ public:
 
 //ds helpers
 protected:
-
-  //! @brief recursively computes all nodes in the tree - used for memory deallocation only (destructor)
-  //! @param[in] node_ the previous node from which the function was spawned
-  //! @param[in] nodes_collection_ all nodes collected so far
-  void _setNodesRecursive(const Node* node_, std::vector<const Node*>& nodes_collection_) const {
-
-    //ds must not be zero
-    assert(node_);
-
-    //ds add the current node
-    nodes_collection_.push_back(node_);
-
-    //ds check if there are leafs
-    if(node_->has_leafs) {
-
-      //ds add leafs and so on
-      _setNodesRecursive(static_cast<const Node*>(node_->left), nodes_collection_);
-      _setNodesRecursive(static_cast<const Node*>(node_->right), nodes_collection_);
-    }
-  }
 
   //! @brief retrieves best matches (BF search) for provided matchables for all image indices
   //! @param[in] matchable_query_

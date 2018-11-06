@@ -64,7 +64,7 @@ public:
   //! @param[in] pointer_ associated object
   //! @param[in] descriptor_ HBST descriptor
   //! @param[in] identifier_tree_ HBST tree identifier (optional)
-  BinaryMatchable(const void* pointer_,
+  BinaryMatchable(void* pointer_,
                   const Descriptor& descriptor_,
                   const uint64_t& identifier_image_ = 0): descriptor(descriptor_),
                                                           _identifier_image(identifier_image_),
@@ -82,7 +82,7 @@ public:
   //! @param[in] identifier_tree_ HBST tree identifier (optional)
   //! @param[in] augmentation_ HBST augmentation vector (optional)
   BinaryMatchable(const uint64_t& identifier_,
-                  const void* pointer_,
+                  void* pointer_,
                   const Descriptor& descriptor_,
                   const uint64_t& identifier_image_ = 0): descriptor(descriptor_),
                                                           _identifier_image(identifier_image_),
@@ -101,14 +101,14 @@ public:
                                                           getDescriptor(descriptor_),
                                                           identifier_image_) {}
 
-  BinaryMatchable(const void* pointer_,
+  BinaryMatchable(void* pointer_,
                   const cv::Mat& descriptor_,
                   const uint64_t& identifier_image_ = 0): BinaryMatchable(pointer_,
                                                           getDescriptor(descriptor_),
                                                           identifier_image_) {}
 
   BinaryMatchable(const uint64_t& identifier_,
-                  const void* pointer_,
+                  void* pointer_,
                   const cv::Mat& descriptor_,
                   const uint64_t& identifier_image_ = 0): BinaryMatchable(identifier_,
                                                                           pointer_,
@@ -199,7 +199,7 @@ public:
   std::map<uint64_t, uint64_t> identifiers;
 
   //! @brief a connected object correspondences - when using this field one must ensure the permanence of the referenced object! - accessible through image identifier
-  std::map<uint64_t, const void*> pointers;
+  std::map<uint64_t, void*> pointers;
 
 //ds fast access (for a matchable with only single values, internal only)
 private:
@@ -211,7 +211,7 @@ private:
   const uint64_t _identifier;
 
   //! @brief single value access only: reference descriptor memory
-  const void* _pointer;
+  void* _pointer;
 };
 
 typedef BinaryMatchable<512> BinaryMatchable512;

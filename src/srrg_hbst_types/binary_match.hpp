@@ -25,8 +25,8 @@ struct BinaryMatch {
               const MatchableType_* matchable_reference_,
               const uint64_t& identifier_query_,
               const uint64_t& identifier_reference_,
-              const void* pointer_query_,
-              const void* pointer_reference_,
+              void* pointer_query_,
+              void* pointer_reference_,
               const real_type_& distance_): matchable_query(matchable_query_),
                                             matchable_reference(matchable_reference_),
                                             identifier_query(identifier_query_),
@@ -57,8 +57,8 @@ struct BinaryMatch {
   const MatchableType_* matchable_reference;
   uint64_t identifier_query;
   uint64_t identifier_reference;
-  const void* pointer_query;
-  const void* pointer_reference;
+  void* pointer_query;
+  void* pointer_reference;
   real_type_ distance;
 };
 }
