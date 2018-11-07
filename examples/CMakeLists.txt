@@ -6,18 +6,15 @@ add_executable(match_incremental match_incremental.cpp)
 if(SRRG_HBST_HAS_OPENCV)
   target_link_libraries(match ${OpenCV_LIBS})
   target_link_libraries(match_incremental ${OpenCV_LIBS})
+ 
+  add_executable(match_opencv opencv/match_opencv.cpp)
+  target_link_libraries(match_opencv ${OpenCV_LIBS})
   
-  add_executable(match_opencv_indices opencv/match_opencv_indices.cpp)
-  target_link_libraries(match_opencv_indices ${OpenCV_LIBS})
+  add_executable(match_incremental_opencv opencv/match_incremental_opencv.cpp)
+  target_link_libraries(match_incremental_opencv ${OpenCV_LIBS})
   
-  add_executable(match_opencv_pointers opencv/match_opencv_pointers.cpp)
-  target_link_libraries(match_opencv_pointers ${OpenCV_LIBS})
-  
-  add_executable(match_incremental_opencv_pointers opencv/match_incremental_opencv_pointers.cpp)
-  target_link_libraries(match_incremental_opencv_pointers ${OpenCV_LIBS})
-  
-  add_executable(match_incremental_opencv_score opencv/match_incremental_opencv_score.cpp)
-  target_link_libraries(match_incremental_opencv_score ${OpenCV_LIBS})
+  add_executable(score_opencv opencv/score_opencv.cpp)
+  target_link_libraries(score_opencv ${OpenCV_LIBS})
   
   add_executable(tracker opencv/tracker.cpp)
   target_link_libraries(tracker ${OpenCV_LIBS})

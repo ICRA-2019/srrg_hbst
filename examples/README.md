@@ -19,21 +19,17 @@ In each example we compute a set of input descriptors using standard OpenCV feat
 To visualize the obtained correspondences we link them with our Matchables using `indices` or `pointers`. <br>
 All of the example applications are located in the `opencv` directory.
 
-For the individual trees we have an example with indices:
+For the individual trees we have an example with linked keypoints:
 
-    match_opencv_indices test_images/
-    
-and one using pointers:
-    
-    match_opencv_pointers test_images/
+    match_opencv test_images/
     
 In the case of the incremental tree check out:
     
-    match_incremental_opencv_pointers  test_images/
+    match_incremental_opencv  test_images/
     
 Who is interested in only image scores finds a simple example in:
 
-    match_incremental_opencv_score test_images/
+    score_opencv test_images/
 
 Additionally we provide a straightforward feature tracking application based on HBST:   
   

@@ -12,7 +12,7 @@
 
 //ds HBST setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<const cv::KeyPoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<cv::KeyPoint, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
@@ -160,14 +160,8 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::Mat descriptors;
     descriptor_extractor->compute(image, keypoints, descriptors);
 
-    //ds allocate keypoints manually in memory (we will directly link to them with our HBST matchables, avoiding any auxiliary bookkeeping)
-    std::vector<const cv::KeyPoint*> keypoints_addresses(keypoints.size());
-    for (uint32_t u = 0; u < keypoints.size(); ++u) {
-      keypoints_addresses[u] = &keypoints[u];
-    }
-
     //ds obtain linked matchables
-    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, keypoints_addresses, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, keypoints, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far) and integrate them simultaneously
     Tree::MatchVectorMap matches_per_image;
@@ -189,8 +183,8 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
 
     //ds draw current keypoints in blue
-    for (const cv::KeyPoint* keypoint: keypoints_addresses) {
-      cv::circle(image_display, keypoint->pt, 2, cv::Scalar(255, 0, 0), -1);
+    for (const cv::KeyPoint& keypoint: keypoints) {
+      cv::circle(image_display, keypoint.pt, 2, cv::Scalar(255, 0, 0), -1);
     }
 
     //ds for each match vector (i.e. matching results for each past image) of ALL past images
@@ -207,8 +201,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
           //ds draw matched descriptors
           for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-            const cv::KeyPoint* point_query = match.object_query;
-            cv::circle(image_display, point_query->pt, 2, cv::Scalar(0, 255, 0), -1);
+            cv::circle(image_display, match.object_query.pt, 2, cv::Scalar(0, 255, 0), -1);
           }
         }
       }

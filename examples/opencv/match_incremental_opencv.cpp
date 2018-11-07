@@ -3,7 +3,7 @@
 
 //ds HBST setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<const cv::KeyPoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<cv::KeyPoint, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
@@ -13,7 +13,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds validate input
   if (argc_ != 2) {
-    std::cerr << "invalid call - please use: ./match_incremental_opencv_pointers /path/to/srrg_hbst/examples/test_images" << std::endl;
+    std::cerr << "invalid call - please use: ./match_incremental_opencv /path/to/srrg_hbst/examples/test_images" << std::endl;
     return 0;
   }
 
@@ -37,7 +37,6 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds bookkeeping for visualization/stats
   std::vector<cv::Mat> images(number_of_images);
-  std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(number_of_images);
   std::vector<Tree::MatchableVector> matchables_per_image(number_of_images);
 
   //ds check each image against each other and itself (100% ratio)
@@ -62,12 +61,9 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds allocate keypoints dynamically on the heap
     //ds we want to link them against our matchables and need access after leaving this scope
     //ds for each keypoint - descriptor pair we allocate a matchable to put into the tree
-    keypoints_per_image[index_image_query].resize(descriptors.rows);
     Tree::MatchableVector matchables_query(descriptors.rows);
     for (uint64_t u = 0; u < static_cast<uint64_t>(descriptors.rows); ++u) {
-      const cv::KeyPoint* keypoint = new cv::KeyPoint(keypoints[u]);
-      keypoints_per_image[index_image_query][u] = keypoint;
-      matchables_query[u] = new Tree::Matchable(keypoint, descriptors.row(u), index_image_query);
+      matchables_query[u] = new Tree::Matchable(keypoints[u], descriptors.row(u), index_image_query);
     }
 
     //ds query HBST with current image and add the descriptors subsequently
@@ -96,18 +92,14 @@ int32_t main(int32_t argc_, char** argv_) {
       //ds draw correspondences - for each match
       for (const Tree::Match& match: matches) {
 
-        //ds directly get the keypoint objects
-        const cv::KeyPoint* keypoint_query     = match.object_query;
-        const cv::KeyPoint* keypoint_reference = match.object_reference;
-
         //ds draw correspondence line between images
-        cv::line(image_display, keypoint_query->pt, keypoint_reference->pt+shift, cv::Scalar(0, 255, 0));
+        cv::line(image_display, match.object_query.pt, match.object_reference.pt+shift, cv::Scalar(0, 255, 0));
 
         //ds draw query point in upper image
-        cv::circle(image_display, keypoint_query->pt, 2, cv::Scalar(255, 0, 0));
+        cv::circle(image_display, match.object_query.pt, 2, cv::Scalar(255, 0, 0));
 
         //ds draw reference point in lower image
-        cv::circle(image_display, keypoint_reference->pt+shift, 2, cv::Scalar(0, 0, 255));
+        cv::circle(image_display, match.object_reference.pt+shift, 2, cv::Scalar(0, 0, 255));
       }
       cv::imshow("matching (top: QUERY, bot: REFERENCE)", image_display);
       cv::waitKey(0);
@@ -116,13 +108,6 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds bookkeep image and matchables for display
     images[index_image_query]               = image_query;
     matchables_per_image[index_image_query] = matchables_query;
-  }
-
-  //ds free the keypoints - the matchables are freed by the tree which takes ownership when added
-  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
-    for (const cv::KeyPoint* keypoint: keypoints) {
-      delete keypoint;
-    }
   }
   return 0;
 }

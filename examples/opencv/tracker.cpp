@@ -12,7 +12,7 @@
 
 //ds HBST setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<const cv::KeyPoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<cv::KeyPoint, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
@@ -100,9 +100,6 @@ int32_t main(int32_t argc_, char** argv_) {
   cv::Ptr<cv::DescriptorExtractor> descriptor_extractor = cv::ORB::create(0);
 #endif
 
-  //ds keypoint buffer (to keep keypoint information for multiple images)
-  std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(0);
-
   //ds matching threshold
   const uint32_t maximum_descriptor_distance = 10;
 
@@ -157,15 +154,8 @@ int32_t main(int32_t argc_, char** argv_) {
     cv::Mat descriptors;
     descriptor_extractor->compute(image, keypoints, descriptors);
 
-    //ds allocate keypoints manually in memory (we will directly link to them with our HBST matchables, avoiding any auxiliary bookkeeping)
-    std::vector<const cv::KeyPoint*> dynamic_keypoints(0);
-    for (const cv::KeyPoint& keypoint: keypoints) {
-      dynamic_keypoints.push_back(new cv::KeyPoint(keypoint));
-    }
-    keypoints_per_image.push_back(dynamic_keypoints);
-
     //ds obtain linked matchables
-    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, dynamic_keypoints, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, keypoints, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far) and integrate them simultaneously
     Tree::MatchVectorMap matches_per_image;
@@ -185,8 +175,8 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds draw current keypoints
     cv::Mat image_display(image);
     cv::cvtColor(image_display, image_display, CV_GRAY2RGB);
-    for (const cv::KeyPoint* keypoint: dynamic_keypoints) {
-      cv::circle(image_display, keypoint->pt, 2, cv::Scalar(255, 0, 0), -1);
+    for (const cv::KeyPoint& keypoint: keypoints) {
+      cv::circle(image_display, keypoint.pt, 2, cv::Scalar(255, 0, 0), -1);
     }
 
     //ds for each match vector (i.e. matching results for each past image) of ALL past images
@@ -196,16 +186,14 @@ int32_t main(int32_t argc_, char** argv_) {
       if (matches_per_image[image_number_reference].size() > 100) {
         std::cerr << "matches from image [" << image_number_reference << "] to image [" << number_of_processed_images << "]: "
                   <<  matches_per_image[image_number_reference].size()
-                  << " (ratio: " << static_cast<double>(matches_per_image[image_number_reference].size())/dynamic_keypoints.size() << ")" << std::endl;
+                  << " (ratio: " << static_cast<double>(matches_per_image[image_number_reference].size())/keypoints.size() << ")" << std::endl;
 
         //ds draw tracks on image
         for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-          const cv::KeyPoint* point_query     = match.object_query;
-          const cv::KeyPoint* point_reference = match.object_reference;
 
           //ds on the fly cutoff kernel
-          if (cv::norm(cv::Mat(point_query->pt), cv::Mat(point_reference->pt)) < 100) {
-            cv::line(image_display, point_query->pt, point_reference->pt, cv::Scalar(rand()%255, rand()%255, rand()%255));
+          if (cv::norm(cv::Mat(match.object_query.pt), cv::Mat(match.object_reference.pt)) < 100) {
+            cv::line(image_display, match.object_query.pt, match.object_reference.pt, cv::Scalar(rand()%255, rand()%255, rand()%255));
           }
         }
       }
@@ -241,13 +229,6 @@ int32_t main(int32_t argc_, char** argv_) {
     //ds done
     ++number_of_processed_images;
     ++number_of_processed_images_current_window;
-  }
-
-  //ds free linked structures to matchables (the matchables themselves get freed by the tree)
-  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
-    for (const cv::KeyPoint* keypoint: keypoints) {
-      delete keypoint;
-    }
   }
   image_file_paths.clear();
   return 0;
