@@ -7,11 +7,14 @@ if(SRRG_HBST_HAS_OPENCV)
   target_link_libraries(match ${OpenCV_LIBS})
   target_link_libraries(match_incremental ${OpenCV_LIBS})
  
-  add_executable(match_opencv opencv/match_opencv.cpp)
-  target_link_libraries(match_opencv ${OpenCV_LIBS})
+  add_executable(match_features opencv/match_features.cpp)
+  target_link_libraries(match_features ${OpenCV_LIBS})
   
-  add_executable(match_incremental_opencv opencv/match_incremental_opencv.cpp)
-  target_link_libraries(match_incremental_opencv ${OpenCV_LIBS})
+  add_executable(match_features_incremental opencv/match_features_incremental.cpp)
+  target_link_libraries(match_features_incremental ${OpenCV_LIBS})
+ 
+  add_executable(match_subclasses_incremental opencv/match_subclasses_incremental.cpp)
+  target_link_libraries(match_subclasses_incremental ${OpenCV_LIBS})
   
   add_executable(score_opencv opencv/score_opencv.cpp)
   target_link_libraries(score_opencv ${OpenCV_LIBS})

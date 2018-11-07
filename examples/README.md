@@ -21,11 +21,15 @@ All of the example applications are located in the `opencv` directory.
 
 For the individual trees we have an example with linked keypoints:
 
-    match_opencv test_images/
+    match_features test_images/
     
 In the case of the incremental tree check out:
     
-    match_incremental_opencv  test_images/
+    match_features_incremental  test_images/
+    
+The same task as previously but with subclassing the matchable type:
+    
+    match_subclasses_incremental  test_images/
     
 Who is interested in only image scores finds a simple example in:
 

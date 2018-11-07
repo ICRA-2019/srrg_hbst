@@ -3,9 +3,32 @@
 
 //ds HBST setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<cv::KeyPoint, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<void*, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
+
+//ds our fancy class which we want to match using HBST
+class MyClass: public Matchable {
+public:
+
+    //ds satisfy our base class (we spare linking auxiliary information with the base matchable)
+    MyClass(cv::KeyPoint& keypoint_,
+            const cv::Mat& descriptor_,
+            const uint64_t& image_number_): Matchable(nullptr, descriptor_, image_number_), _keypoint(keypoint_.pt) {}
+
+    //ds access
+    const cv::Point2f& keypoint() const {return _keypoint;}
+    const std::string& information() const {return _information;}
+    const cv::Scalar& color() const {return _color;}
+
+protected:
+
+  //ds some example attributes
+  cv::Point2f _keypoint;
+  std::string _information = "much information";
+  cv::Scalar  _color       = cv::Scalar(rand()%255, rand()%255, rand()%255);
+
+};
 
 
 
@@ -13,7 +36,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds validate input
   if (argc_ != 2) {
-    std::cerr << "invalid call - please use: ./match_incremental_opencv /path/to/srrg_hbst/examples/test_images" << std::endl;
+    std::cerr << "invalid call - please use: ./match_subclasses_incremental /path/to/srrg_hbst/examples/test_images" << std::endl;
     return 0;
   }
 
@@ -58,12 +81,13 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image_query, keypoints, descriptors);
     std::cerr << "loaded image: " << index_image_query << " with keypoints/descriptors: " << descriptors.rows << std::endl;
 
-    //ds allocate keypoints dynamically on the heap
-    //ds we want to link them against our matchables and need access after leaving this scope
     //ds for each keypoint - descriptor pair we allocate a matchable to put into the tree
     Tree::MatchableVector matchables_query(descriptors.rows);
     for (uint64_t u = 0; u < static_cast<uint64_t>(descriptors.rows); ++u) {
-      matchables_query[u] = new Tree::Matchable(keypoints[u], descriptors.row(u), index_image_query);
+
+      //ds allocate an object of our class and add it to the matchable vector
+      //ds in case the class objects have been allocated already we just have to assign them here
+      matchables_query[u] = new MyClass(keypoints[u], descriptors.row(u), index_image_query);
     }
 
     //ds query HBST with current image and add the descriptors subsequently
@@ -89,17 +113,21 @@ int32_t main(int32_t argc_, char** argv_) {
       //ds shift to lower image
       const cv::Point2f shift(0, image_query.rows);
 
-      //ds draw correspondences - for each match
+      //ds for each match
       for (const Tree::Match& match: matches) {
 
+        //ds obtain our class objects - good old downcasting - we (think we) know what we are doing
+        const MyClass* myclass_query     = reinterpret_cast<const MyClass*>(match.matchable_query);
+        const MyClass* myclass_reference = reinterpret_cast<const MyClass*>(match.matchable_reference);
+
         //ds draw correspondence line between images
-        cv::line(image_display, match.object_query.pt, match.object_reference.pt+shift, cv::Scalar(0, 255, 0));
+        cv::line(image_display, myclass_query->keypoint(), myclass_reference->keypoint()+shift, cv::Scalar(0, 255, 0));
 
         //ds draw query point in upper image
-        cv::circle(image_display, match.object_query.pt, 2, cv::Scalar(255, 0, 0));
+        cv::circle(image_display, myclass_query->keypoint(), 2, myclass_query->color());
 
         //ds draw reference point in lower image
-        cv::circle(image_display, match.object_reference.pt+shift, 2, cv::Scalar(0, 0, 255));
+        cv::circle(image_display, myclass_reference->keypoint()+shift, 2, myclass_reference->color());
       }
       cv::imshow("matching (top: QUERY, bot: REFERENCE)", image_display);
       cv::waitKey(0);
