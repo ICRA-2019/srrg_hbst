@@ -1,8 +1,11 @@
 #include <iostream>
 #include "srrg_hbst_types/binary_tree.hpp"
 
-//ds keeping it readable
-using namespace srrg_hbst;
+//ds HBST setup
+#define DESCRIPTOR_SIZE_BITS 256
+typedef srrg_hbst::BinaryMatchable<uint64_t, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
+typedef srrg_hbst::BinaryTree<Node> Tree;
 
 
 
@@ -31,7 +34,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
   //ds our HBST database
   std::printf("allocating empty tree\n");
-  BinaryTree256 database;
+  Tree database;
 
   //ds for each image
   std::printf("------------[ press any key to step ]------------\n");
@@ -51,15 +54,17 @@ int32_t main(int32_t argc_, char** argv_) {
     descriptor_extractor->compute(image, keypoints, descriptors);
 
     //ds obtain matchables for each descriptor with continuous indexing
-    const BinaryTree256::MatchableVector matchables(BinaryTree256::getMatchablesWithIndex(descriptors, index_image));
+    std::vector<uint64_t> indices(descriptors.rows, 0);
+    std::for_each(indices.begin(), indices.end(), [](uint64_t &index){++index;});
+    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, indices, index_image));
 
     //ds query for matching ratio
     std::printf("matching ratios for image [%02u] with %lu images in database\n", index_image, database.size());
-    BinaryTree256::ScoreVector image_scores(database.getScorePerImage(matchables, true, maximum_matching_distance));
+    Tree::ScoreVector image_scores(database.getScorePerImage(matchables, true, maximum_matching_distance));
 
     //ds print sorted scores
     std::cerr << "-------------------------------------------------" << std::endl;
-    for (const BinaryTree256::Score& score: image_scores) {
+    for (const Tree::Score& score: image_scores) {
       std::printf(" > matching score for for QUERY [%02u] to REFERENCE [%02lu]: %5.3f (total matches: %4lu)\n",
                   index_image, score.identifier_reference, score.matching_ratio, score.number_of_matches);
     }

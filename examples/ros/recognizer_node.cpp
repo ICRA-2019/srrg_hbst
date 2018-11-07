@@ -18,10 +18,11 @@
   #error OpenCV version not supported
 #endif
 
-
-
-//ds readability
-typedef srrg_hbst::BinaryTree256 Tree;
+//ds current setup
+#define DESCRIPTOR_SIZE_BITS 256
+typedef srrg_hbst::BinaryMatchable<const cv::KeyPoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
+typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds nasty global buffers
 cv::Ptr<cv::FeatureDetector> keypoint_detector;
@@ -118,13 +119,13 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
     descriptor_extractor->compute(image, keypoints, descriptors);
 
     //ds allocate keypoints manually in memory (we will directly link to them with our HBST matchables, avoiding any auxiliary bookkeeping)
-    std::vector<cv::KeyPoint*> keypoints_addresses(keypoints.size());
+    std::vector<const cv::KeyPoint*> keypoints_addresses(keypoints.size());
     for (uint32_t u = 0; u < keypoints.size(); ++u) {
       keypoints_addresses[u] = &keypoints[u];
     }
 
     //ds obtain linked matchables
-    const Tree::MatchableVector matchables(Tree::getMatchablesWithPointer<cv::KeyPoint*>(descriptors, keypoints_addresses, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, keypoints_addresses, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far) and integrate them simultaneously
     Tree::MatchVectorMap matches_per_image;
@@ -154,8 +155,7 @@ void callbackImage(const sensor_msgs::ImageConstPtr& image_) {
 
           //ds draw matched descriptors
           for (const Tree::Match& match: matches_per_image[image_number_reference]) {
-            cv::KeyPoint* point_query     = static_cast<cv::KeyPoint*>(match.pointer_query);
-            cv::circle(image_display, point_query->pt, 2, cv::Scalar(0, 255, 0), -1);
+            cv::circle(image_display, match.object_query->pt, 2, cv::Scalar(0, 255, 0), -1);
           }
         }
       }

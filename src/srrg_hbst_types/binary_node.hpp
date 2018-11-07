@@ -300,8 +300,4 @@ template<typename BinaryMatchableType_, typename real_type_>
 uint32_t BinaryNode<BinaryMatchableType_, real_type_>::maximum_depth          = BinaryMatchableType_::descriptor_size_bits;
 template<typename BinaryMatchableType_, typename real_type_>
 std::mt19937 BinaryNode<BinaryMatchableType_, real_type_>::random_number_generator;
-
-typedef BinaryNode<BinaryMatchable512> BinaryNode512;
-typedef BinaryNode<BinaryMatchable256> BinaryNode256;
-typedef BinaryNode<BinaryMatchable128> BinaryNode128;
 }

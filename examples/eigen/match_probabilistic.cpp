@@ -4,7 +4,7 @@
 
 //ds current setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::ProbabilisticMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::ProbabilisticMatchable<uint64_t, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::ProbabilisticNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 const double RAND_MAX_AS_DOUBLE = static_cast<double>(RAND_MAX);

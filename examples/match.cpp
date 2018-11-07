@@ -3,7 +3,7 @@
 
 //ds current setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<uint64_t, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
@@ -51,8 +51,8 @@ int32_t main() {
   for (uint64_t index_match = 0; index_match < matches1.size( ); ++index_match) {
 
     //ds check if not matching
-    if(matches1[index_match].identifier_query     != matches2->at(index_match).identifier_query    ||
-       matches1[index_match].identifier_reference != matches2->at(index_match).identifier_reference||
+    if(matches1[index_match].object_query     != matches2->at(index_match).object_query    ||
+       matches1[index_match].object_reference != matches2->at(index_match).object_reference||
        matches1[index_match].distance             != matches2->at(index_match).distance            ) {
         std::cerr << "received inconsistent matching returns" << std::endl;
         return -1;

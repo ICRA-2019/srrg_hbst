@@ -10,7 +10,11 @@
   #error OpenCV version not supported
 #endif
 
-using namespace srrg_hbst;
+//ds HBST setup
+#define DESCRIPTOR_SIZE_BITS 256
+typedef srrg_hbst::BinaryMatchable<const cv::KeyPoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
+typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds feature handling
 cv::Ptr<cv::FeatureDetector> keypoint_detector;
@@ -18,10 +22,10 @@ cv::Ptr<cv::DescriptorExtractor> descriptor_extractor;
 
 //ds buffers
 std::vector<cv::Mat> images(10);
-std::vector<std::vector<cv::KeyPoint*>> keypoints_per_image(10);
+std::vector<std::vector<const cv::KeyPoint*>> keypoints_per_image(10);
 
 //ds retrieves HBST matchables from an opencv image stored at the provided location
-const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
+const Tree::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_);
 
 
 
@@ -52,7 +56,7 @@ int32_t main(int32_t argc, char** argv) {
   const std::string test_images_folder = argv[1];
 
   //ds matchables vector
-  std::vector<BinaryTree256::MatchableVector> matchables_per_image(10);
+  std::vector<Tree::MatchableVector> matchables_per_image(10);
   for (uint32_t u = 0; u < 10; ++u) {
 
     //ds generate file name
@@ -64,11 +68,11 @@ int32_t main(int32_t argc, char** argv) {
   }
 
   //ds create HBSTs
-  std::vector<BinaryTree256*> trees(10, 0);
+  std::vector<Tree*> trees(10, 0);
   for (uint32_t u = 0; u < 10; ++u) {
     std::printf("building tree with image [%02u]\n", u);
     time_begin = std::chrono::system_clock::now();
-    trees[u] = new BinaryTree256(u, matchables_per_image[u]);
+    trees[u] = new Tree(u, matchables_per_image[u]);
     duration_construction += std::chrono::system_clock::now()-time_begin;
   }
 
@@ -80,7 +84,7 @@ int32_t main(int32_t argc, char** argv) {
     for (uint32_t index_reference = 0; index_reference < 10; ++index_reference) {
 
       //ds query reference with matchables
-      BinaryTree256::MatchVector matches;
+      Tree::MatchVector matches;
       time_begin = std::chrono::system_clock::now();
       trees[index_reference]->matchLazy(matchables_per_image[index_query], matches);
       duration_query += std::chrono::system_clock::now()-time_begin;
@@ -98,11 +102,11 @@ int32_t main(int32_t argc, char** argv) {
       cv::Point2f shift(0, images[index_reference].rows);
 
       //ds draw correspondences
-      for (const BinaryTree256::Match& match: matches) {
+      for (const Tree::Match& match: matches) {
 
         //ds directly get the keypoint objects
-        const cv::KeyPoint* keypoint_query     = static_cast<const cv::KeyPoint*>(match.pointer_reference);
-        const cv::KeyPoint* keypoint_reference = static_cast<const cv::KeyPoint*>(match.pointer_query);
+        const cv::KeyPoint* keypoint_query     = match.object_reference;
+        const cv::KeyPoint* keypoint_reference = match.object_query;
 
         //ds draw correspondence
         cv::line(image_display, keypoint_query->pt, keypoint_reference->pt+shift, cv::Scalar(0, 255, 0));
@@ -127,12 +131,12 @@ int32_t main(int32_t argc, char** argv) {
   std::cerr << "------------------------------------------------" << std::endl;
 
   //ds fight memory leaks!
-  for (const BinaryTree256* tree: trees) {
+  for (const Tree* tree: trees) {
     delete tree;
   }
   matchables_per_image.clear();
-  for (const std::vector<cv::KeyPoint*>& keypoints: keypoints_per_image) {
-    for (cv::KeyPoint* keypoint: keypoints) {
+  for (const std::vector<const cv::KeyPoint*>& keypoints: keypoints_per_image) {
+    for (const cv::KeyPoint* keypoint: keypoints) {
       delete keypoint;
     }
   }
@@ -141,10 +145,10 @@ int32_t main(int32_t argc, char** argv) {
   return 0;
 }
 
-const BinaryTree256::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
+const Tree::MatchableVector getMatchables(const std::string& filename_image_, const uint64_t& identifier_tree_) {
 
   //ds allocate empty matchable vector
-  BinaryTree256::MatchableVector matchables(0);
+  Tree::MatchableVector matchables(0);
 
   //ds load image (project root folder)
   images[identifier_tree_] = cv::imread(filename_image_, CV_LOAD_IMAGE_GRAYSCALE);
@@ -163,5 +167,5 @@ const BinaryTree256::MatchableVector getMatchables(const std::string& filename_i
   }
 
   //ds get descriptors to HBST format
-  return BinaryTree256::getMatchablesWithPointer<cv::KeyPoint*>(descriptors, keypoints_per_image[identifier_tree_]);
+  return Tree::getMatchables(descriptors, keypoints_per_image[identifier_tree_]);
 }

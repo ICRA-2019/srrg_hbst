@@ -19,6 +19,7 @@ public:
   typedef typename Node::Descriptor Descriptor;
   typedef typename Node::Match Match;
   typedef typename Node::real_type real_type;
+  typedef typename Matchable::ObjectType ObjectType;
   typedef std::vector<Match> MatchVector;
   typedef std::map<uint64_t, std::vector<Match>> MatchVectorMap;
   typedef std::pair<uint64_t, std::vector<Match>> MatchVectorMapElement;
@@ -100,18 +101,6 @@ public:
     _mergables.clear();
 #endif
   }
-
-#ifdef SRRG_HBST_HAS_OPENCV
-
-  //ds wrapped constructors - only available if OpenCV is present on building system
-  BinaryTree(const cv::Mat& matchables_): BinaryTree(getMatchablesWithIndex(matchables_)) {}
-  BinaryTree(const uint64_t& identifier_,
-             const cv::Mat& matchables_): BinaryTree(identifier_, getMatchablesWithIndex(matchables_)) {}
-  BinaryTree(const uint64_t& identifier_,
-             const cv::Mat& matchables_,
-             Descriptor bit_mask_): identifier(identifier_, getMatchablesWithIndex(matchables_), bit_mask_) {}
-
-#endif
 
   //ds free all nodes in the tree
   virtual ~BinaryTree() {
@@ -227,7 +216,7 @@ public:
           std::set<uint64_t> matched_references;
           for (const Matchable* matchable_reference: node_current->matchables) {
             if (maximum_distance_ > matchable_query->distance(matchable_reference)) {
-              for(const uint64_t& identifier_reference: matchable_reference->identifiers_image) {
+              for(const uint64_t& identifier_reference: matchable_reference->image_identifiers) {
 
                 //ds the query matchable can be matched only once to each reference image
                 if (matched_references.count(identifier_reference) == 0) {
@@ -321,10 +310,8 @@ public:
             if (distance < maximum_distance_) {
               matches_.push_back(Match(matchable_query,
                                        matchable_reference,
-                                       matchable_query->identifiers.at(0),
-                                       matchable_reference->identifiers.at(0),
-                                       matchable_query->pointers.at(0),
-                                       matchable_reference->pointers.at(0),
+                                       matchable_query->objects.begin()->second,
+                                       matchable_reference->objects.begin()->second,
                                        distance));
               break;
             }
@@ -378,10 +365,8 @@ public:
           if (matchable_reference_best) {
             matches_.push_back(Match(matchable_query,
                                      matchable_reference_best,
-                                     matchable_query->identifiers.at(0),
-                                     matchable_reference_best->identifiers.at(0),
-                                     matchable_query->pointers.at(0),
-                                     matchable_reference_best->pointers.at(0),
+                                     matchable_query->objects.begin()->second,
+                                     matchable_reference_best->objects.begin()->second,
                                      distance_best));
           }
           break;
@@ -461,7 +446,7 @@ public:
     }
 
     //ds store arguments
-    _added_identifiers_train.insert(matchables_.front()->identifiers_image[0]);
+    _added_identifiers_train.insert(matchables_.front()->image_identifiers[0]);
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
 
     //ds train based on set matchables (no effect for do nothing train mode)
@@ -523,8 +508,10 @@ public:
 
               //ds absorb the matchable on the spot - bare with me
               Matchable* merger = const_cast<Matchable*>(matchable_reference);
-              merger->mergeSingle(matchable_to_insert);
-              delete matchable_to_insert;
+              if (merger != matchable_to_insert) {  //ds TODO enforce by construction and blast this line
+                merger->mergeSingle(matchable_to_insert);
+                delete matchable_to_insert;
+              }
               insertion_required = false;
               break;
             }
@@ -568,7 +555,7 @@ public:
     if (matchables_.empty()) {
       return;
     }
-    const uint64_t identifier_image_query = matchables_.front()->identifiers_image[0];
+    const uint64_t identifier_image_query = matchables_.front()->image_identifiers[0];
 
     //ds check if we have to build an initial tree first
     if (!_root) {
@@ -660,10 +647,12 @@ public:
 
     //ds merge matchables
     for (Mergable& mergable: _mergables) {
-      mergable.reference->mergeSingle(mergable.query);
+      if (mergable.reference != mergable.query) { //ds TODO enforce by construction and blast this line
+        mergable.reference->mergeSingle(mergable.query);
 
-      //ds free query (!) recall that the tree takes ownership of the matchables
-      delete mergable.query;
+        //ds free query (!) recall that the tree takes ownership of the matchables
+        delete mergable.query;
+      }
     }
 #endif
 
@@ -688,85 +677,15 @@ public:
 
 #ifdef SRRG_HBST_HAS_OPENCV
 
-  //ds returns an ordered vector of image scores
-  const ScoreVector getScorePerImage(const cv::Mat& descriptors_cv_, const bool sort_output = false, const uint32_t maximum_distance_ = 25) const {
-    return getScorePerImage(getMatchablesWithIndex(descriptors_cv_), sort_output, maximum_distance_);
-  }
-
-  //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
-  static const MatchableVector getMatchablesWithIndex(const cv::Mat& descriptors_cv_) {
-    MatchableVector matchables(descriptors_cv_.rows);
-
-    //ds copy raw data
-    for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(index_descriptor, descriptors_cv_.row(index_descriptor));
-    }
-    return matchables;
-  }
-
-  //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
-  static const MatchableVector getMatchablesWithIndex(const cv::Mat& descriptors_cv_, const uint64_t& identifier_tree_) {
-    MatchableVector matchables(descriptors_cv_.rows);
-
-    //ds copy raw data
-    for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(index_descriptor, descriptors_cv_.row(index_descriptor), identifier_tree_);
-    }
-    return matchables;
-  }
-
-  //ds creates a matchable vector (indexed) from opencv descriptors - only available if OpenCV is present on building system
-  //ds starting the indexing from a given id
-  static const MatchableVector getMatchablesWithIndex(const cv::Mat& descriptors_cv_,
-                                                      const uint64_t& identifier_tree_,
-                                                      const uint64_t& index_start_) {
-    MatchableVector matchables(descriptors_cv_.rows);
-
-    //ds copy raw data
-    for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(index_start_+index_descriptor, descriptors_cv_.row(index_descriptor), identifier_tree_);
-    }
-    return matchables;
-  }
-
   //ds creates a matchable vector (pointers) from opencv descriptors - only available if OpenCV is present on building system
-  template<typename PointerType_>
-  static const MatchableVector getMatchablesWithPointer(const cv::Mat& descriptors_cv_, const std::vector<PointerType_>& pointers_, const uint64_t& identifier_tree_ = 0) {
+  static const MatchableVector getMatchables(const cv::Mat& descriptors_cv_, const std::vector<ObjectType>& objects_, const uint64_t& identifier_tree_ = 0) {
     MatchableVector matchables(descriptors_cv_.rows);
 
     //ds copy raw data
     for (int64_t index_descriptor = 0; index_descriptor < descriptors_cv_.rows; ++index_descriptor) {
-      matchables[index_descriptor] = new Matchable(static_cast<void*>(pointers_[index_descriptor]), descriptors_cv_.row(index_descriptor), identifier_tree_);
+      matchables[index_descriptor] = new Matchable(objects_[index_descriptor], descriptors_cv_.row(index_descriptor), identifier_tree_);
     }
     return matchables;
-  }
-
-  virtual void add(const cv::Mat& matchables_train_,
-                   const uint64_t& identifier_tree_,
-                   const SplittingStrategy& train_mode_ = SplittingStrategy::DoNothing) {
-    add(getMatchablesWithIndex(matchables_train_, identifier_tree_), train_mode_);
-  }
-
-  virtual void match(const cv::Mat& matchables_query_,
-                     MatchVector& matches_,
-                     const uint32_t& maximum_distance_matching_ = 25) {
-    match(getMatchablesWithIndex(matchables_query_), matches_, maximum_distance_matching_);
-  }
-
-  virtual void match(const cv::Mat& matchables_query_,
-                     const uint64_t& identifier_tree_,
-                     MatchVectorMap& matches_,
-                     const uint32_t maximum_distance_matching_ = 25,
-                     const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
-    match(getMatchablesWithIndex(matchables_query_, identifier_tree_), matches_, maximum_distance_matching_);
-  }
-
-  virtual void matchAndAdd(const cv::Mat& matchables_query_,
-                           const uint64_t& identifier_tree_,
-                           MatchVectorMap& matches_,
-                           const uint32_t maximum_distance_matching_ = 25,
-                           const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
-    matchAndAdd(getMatchablesWithIndex(matchables_query_, identifier_tree_), matches_, maximum_distance_matching_, train_mode_);
   }
 
 #endif
@@ -849,7 +768,7 @@ protected:
                         const MatchableVector& matchables_reference_,
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_) const {
-    const uint64_t& identifer_tree_query = matchable_query_->identifiers_image[0];
+    const uint64_t& identifer_tree_query = matchable_query_->image_identifiers[0];
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
@@ -861,27 +780,24 @@ protected:
       if (distance < maximum_distance_matching_) {
 
         //ds for every reference in this matchable
-        for (const uint64_t& identifer_tree_reference: matchable_reference->identifiers_image) {
+        for (const uint64_t& identifer_tree_reference: matchable_reference->image_identifiers) {
 
           //ds check if there already is a match for this identifier
           try {
 
             //ds update match if current is better
             if (distance < best_matches_.at(identifer_tree_reference).distance) {
-              best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
-              best_matches_.at(identifer_tree_reference).identifier_reference = matchable_reference->identifiers.at(identifer_tree_reference);
-              best_matches_.at(identifer_tree_reference).pointer_reference    = matchable_reference->pointers.at(identifer_tree_reference);
-              best_matches_.at(identifer_tree_reference).distance             = distance;
+              best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
+              best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->objects.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).distance            = distance;
             }
           } catch (const std::out_of_range& /*exception*/) {
 
             //ds add a new match
             best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
                                                                                 matchable_reference,
-                                                                                matchable_query_->identifiers.at(identifer_tree_query),
-                                                                                matchable_reference->identifiers.at(identifer_tree_reference),
-                                                                                matchable_query_->pointers.at(identifer_tree_query),
-                                                                                matchable_reference->pointers.at(identifer_tree_reference),
+                                                                                matchable_query_->objects.at(identifer_tree_query),
+                                                                                matchable_reference->objects.at(identifer_tree_reference),
                                                                                 distance)));
           }
         }
@@ -901,7 +817,7 @@ protected:
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_,
                         Matchable*& matchable_reference_for_merge_) const {
-    const uint64_t& identifer_tree_query = matchable_query_->identifiers_image[0];
+    const uint64_t& identifer_tree_query = matchable_query_->image_identifiers[0];
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
@@ -920,7 +836,7 @@ protected:
       if (distance < maximum_distance_matching_) {
 
         //ds for every reference in this matchable
-        for (const uint64_t& identifer_tree_reference: matchable_reference->identifiers_image) {
+        for (const uint64_t& identifer_tree_reference: matchable_reference->image_identifiers) {
 
           //ds check if there already is a match for this identifier
           try {
@@ -928,8 +844,7 @@ protected:
             //ds update match if current is better
             if (distance < best_matches_.at(identifer_tree_reference).distance) {
               best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
-              best_matches_.at(identifer_tree_reference).identifier_reference = matchable_reference->identifiers.at(identifer_tree_reference);
-              best_matches_.at(identifer_tree_reference).pointer_reference    = matchable_reference->pointers.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->objects.at(identifer_tree_reference);
               best_matches_.at(identifer_tree_reference).distance             = distance;
             }
           } catch (const std::out_of_range& /*exception*/) {
@@ -937,10 +852,8 @@ protected:
             //ds add a new match
             best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
                                                                                 matchable_reference,
-                                                                                matchable_query_->identifiers.at(identifer_tree_query),
-                                                                                matchable_reference->identifiers.at(identifer_tree_reference),
-                                                                                matchable_query_->pointers.at(identifer_tree_query),
-                                                                                matchable_reference->pointers.at(identifer_tree_reference),
+                                                                                matchable_query_->objects.at(identifer_tree_query),
+                                                                                matchable_reference->objects.at(identifer_tree_reference),
                                                                                 distance)));
           }
         }
@@ -990,8 +903,4 @@ protected:
 template<typename BinaryNodeType_>
 uint32_t BinaryTree<BinaryNodeType_>::maximum_distance_for_merge = 0;
 #endif
-
-typedef BinaryTree<BinaryNode512> BinaryTree512;
-typedef BinaryTree<BinaryNode256> BinaryTree256;
-typedef BinaryTree<BinaryNode128> BinaryTree128;
 }

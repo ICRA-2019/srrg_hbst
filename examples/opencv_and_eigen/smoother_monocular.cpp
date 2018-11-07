@@ -18,13 +18,6 @@
 #define qglv_real float
 #endif
 
-//ds current HBST configuration - 256 bit
-typedef srrg_hbst::BinaryTree256 Tree;
-typedef srrg_hbst::BinaryTree256::MatchableVector MatchableVector;
-typedef srrg_hbst::BinaryTree256::Match Match;
-typedef srrg_hbst::BinaryTree256::MatchVector MatchVector;
-typedef srrg_hbst::BinaryTree256::MatchVectorMap MatchVectorMap;
-
 //ds aligned eigen types
 typedef std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > IsometryVector;
 
@@ -47,6 +40,12 @@ struct Framepoint {
   uint32_t track_length                 = 0;
   Eigen::Vector3d coordinates_in_camera = Eigen::Vector3d::Zero();
 };
+
+//ds current HBST setup (just here because we need to know the Framepoint class)
+#define DESCRIPTOR_SIZE_BITS 256
+typedef srrg_hbst::BinaryMatchable<Framepoint*, DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryNode<Matchable> Node;
+typedef srrg_hbst::BinaryTree<Node> Tree;
 
 //ds simple trajectory viewer
 class Viewer: public QGLViewer {
@@ -187,10 +186,10 @@ int32_t main(int32_t argc_, char** argv_) {
 
 // HBST FEATURE MATCHING ----------------------------------------------------------------------------------------------------------------------------------------------------
     //ds obtain linked matchables
-    const MatchableVector matchables(Tree::getMatchablesWithPointer<Framepoint*>(descriptors, framepoints, number_of_processed_images));
+    const Tree::MatchableVector matchables(Tree::getMatchables(descriptors, framepoints, number_of_processed_images));
 
     //ds obtain matches against all inserted matchables (i.e. images so far)
-    MatchVectorMap matches_per_image;
+    Tree::MatchVectorMap matches_per_image;
     hbst_tree.matchAndAdd(matchables, matches_per_image, maximum_descriptor_distance);
 // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -204,7 +203,7 @@ int32_t main(int32_t argc_, char** argv_) {
 
 // MATCH PRUNING AND BOOKKEEPING --------------------------------------------------------------------------------------------------------------------------------------------
       //ds grab matches from previous image only (currently ignoring matches to images which lay further in the past)
-      const MatchVector& matches(matches_per_image[number_of_processed_images-1]);
+      const Tree::MatchVector& matches(matches_per_image[number_of_processed_images-1]);
       std::vector<Framepoint*> current_points(matches.size());
 
       //ds ignorantly filter outlier matches in a brutal loop
@@ -213,8 +212,8 @@ int32_t main(int32_t argc_, char** argv_) {
       for (uint32_t u = 0; u < current_points.size(); ++u) {
 
         //ds obtain linked framepoints
-        Framepoint* current_point  = static_cast<Framepoint*>(matches[u].pointer_query);
-        Framepoint* previous_point = static_cast<Framepoint*>(matches[u].pointer_reference);
+        Framepoint* current_point  = matches[u].object_query;
+        Framepoint* previous_point = matches[u].object_reference;
 
         //ds cross-check if we not already matched against this previous point TODO enable cross-check in HBST
         if (linked_previous.count(previous_point)) {

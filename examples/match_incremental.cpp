@@ -3,7 +3,7 @@
 
 //ds current setup
 #define DESCRIPTOR_SIZE_BITS 256
-typedef srrg_hbst::BinaryMatchable<DESCRIPTOR_SIZE_BITS> Matchable;
+typedef srrg_hbst::BinaryMatchable<uint64_t, DESCRIPTOR_SIZE_BITS> Matchable;
 typedef srrg_hbst::BinaryNode<Matchable> Node;
 typedef srrg_hbst::BinaryTree<Node> Tree;
 
@@ -22,7 +22,7 @@ int32_t main() {
 
   //ds allocate a BTree object on these descriptors (no shared pointer passed as the tree will have its own constant copy of the train descriptors)
   std::cerr << "building initial tree" << std::endl;
-  Tree hbst_tree(0, matchables_per_image.front());
+  Tree hbst_tree(0, matchables_per_image[0]);
   std::cerr << "built initial tree" << std::endl;
 
   //ds add other elements to the tree
@@ -34,12 +34,18 @@ int32_t main() {
   std::cerr << "grown tree" << std::endl;
 
   //ds query descriptor pool
-  const Tree::MatchableVector matchables_query = getDummyMatchables(5000, 1);
+  const Tree::MatchableVector matchables_query = getDummyMatchables(5000, 11);
 
-  //ds query the tree with maximum distance 25
-  std::cerr << "querying tree" << std::endl;
-  Tree::MatchVector matches;
-  hbst_tree.match(matchables_query, matches, 25);
+  //ds query the tree with maximum distance 25 - and obtain individual matches for each image added
+  std::cerr << "querying tree - getting results per image" << std::endl;
+  Tree::MatchVectorMap matches_per_image;
+  hbst_tree.match(matchables_query, matches_per_image, 25);
+  std::cerr << "queried tree" << std::endl;
+
+  //ds query the tree with maximum distance 25 - obtaining total matches over all descriptors added (instead per individual image)
+  std::cerr << "querying tree - getting results for all images" << std::endl;
+  Tree::MatchVector matches_overall;
+  hbst_tree.match(matchables_query, matches_overall, 25);
   std::cerr << "queried tree" << std::endl;
 
   //ds fight memory leaks!
