@@ -21,32 +21,32 @@ public:
   ProbabilisticMatchable(ObjectType object_,
                          const Descriptor& descriptor_,
                          const uint64_t& image_identifier_ = 0): BinaryMatchable<ObjectType_, descriptor_size_bits_>(object_, descriptor_, image_identifier_),
-                                                                bit_probabilities(BitStatisticsVector()),
-                                                                bit_volatility(BitStatisticsVector()) {}
+                                                                 bit_probabilities(BitStatisticsVector()),
+                                                                 bit_volatility(BitStatisticsVector()) {}
 
   ProbabilisticMatchable(ObjectType object_,
                          const Descriptor& descriptor_,
                          const BitStatisticsVector& bit_probabilities_,
                          const BitStatisticsVector& bit_volatility_ ,
                          const uint64_t& image_identifier_ = 0): BinaryMatchable<ObjectType_, descriptor_size_bits_>(object_, descriptor_, image_identifier_),
-                                                                bit_probabilities(bit_probabilities_),
-                                                                bit_volatility(bit_volatility_) {}
+                                                                 bit_probabilities(bit_probabilities_),
+                                                                 bit_volatility(bit_volatility_) {}
 
   //ds wrapped constructors - only available if OpenCV is present on building system
 #ifdef SRRG_HBST_HAS_OPENCV
   ProbabilisticMatchable(ObjectType object_,
                          const cv::Mat& descriptor_,
                          const uint64_t& image_identifier_ = 0): BinaryMatchable<ObjectType_, descriptor_size_bits_>(object_, descriptor_, image_identifier_),
-                                                                bit_probabilities(BitStatisticsVector()),
-                                                                bit_volatility(BitStatisticsVector()) {}
+                                                                 bit_probabilities(BitStatisticsVector()),
+                                                                 bit_volatility(BitStatisticsVector()) {}
 
   ProbabilisticMatchable(ObjectType object_,
                          const cv::Mat& descriptor_,
                          const BitStatisticsVector& bit_probabilities_,
                          const BitStatisticsVector& bit_volatility_ ,
                          const uint64_t& image_identifier_ = 0): BinaryMatchable<ObjectType_, descriptor_size_bits_>(object_, descriptor_, image_identifier_),
-                                                                bit_probabilities(bit_probabilities_),
-                                                                bit_volatility(bit_volatility_) {}
+                                                                 bit_probabilities(bit_probabilities_),
+                                                                 bit_volatility(bit_volatility_) {}
 #endif
 
   ~ProbabilisticMatchable() {}

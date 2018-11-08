@@ -117,8 +117,8 @@ int32_t main(int32_t argc_, char** argv_) {
       for (const Tree::Match& match: matches) {
 
         //ds obtain our class objects - good old downcasting - we (think we) know what we are doing
-        const MyClass* myclass_query     = reinterpret_cast<const MyClass*>(match.matchable_query);
-        const MyClass* myclass_reference = reinterpret_cast<const MyClass*>(match.matchable_reference);
+        const MyClass* myclass_query     = (const MyClass*) match.matchable_query;
+        const MyClass* myclass_reference = (const MyClass*) match.matchable_reference;
 
         //ds draw correspondence line between images
         cv::line(image_display, myclass_query->keypoint(), myclass_reference->keypoint()+shift, cv::Scalar(0, 255, 0));

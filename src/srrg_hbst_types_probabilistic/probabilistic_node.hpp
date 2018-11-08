@@ -9,12 +9,12 @@ template<typename ProbabilisticMatchableType_, typename real_precision_ = double
 class ProbabilisticNode: public BinaryNode<ProbabilisticMatchableType_, real_precision_>
 {
   //ds readability
-  using BaseNode = BinaryNode<ProbabilisticMatchableType_, real_precision_>;
-  using Node     = ProbabilisticNode<ProbabilisticMatchableType_, real_precision_>;
+  using Node = ProbabilisticNode<ProbabilisticMatchableType_, real_precision_>;
 
 //ds template forwarding
 public: EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  typedef BinaryNode<ProbabilisticMatchableType_, real_precision_> BaseNode;
   typedef ProbabilisticMatchableType_ Matchable;
   typedef typename Matchable::Descriptor Descriptor;
   typedef std::vector<Matchable*> MatchableVector;

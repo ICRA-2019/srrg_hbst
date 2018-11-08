@@ -23,6 +23,7 @@ class BinaryNode
 //ds template forwarding
 public:
 
+  typedef Node BaseNode;
   typedef BinaryMatchableType_ Matchable;
   typedef std::vector<Matchable*> MatchableVector;
   typedef typename Matchable::Descriptor Descriptor;

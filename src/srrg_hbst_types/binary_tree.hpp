@@ -13,7 +13,7 @@ class BinaryTree
 public:
 
   //! @brief directly exported types (readability)
-  typedef BinaryNodeType_ Node;
+  typedef typename BinaryNodeType_::BaseNode Node;
   typedef typename Node::Matchable Matchable;
   typedef typename Node::MatchableVector MatchableVector;
   typedef typename Node::Descriptor Descriptor;
@@ -161,9 +161,9 @@ public:
 
           //ds check the split bit and go deeper
           if(matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 
@@ -206,9 +206,9 @@ public:
 
           //ds check the split bit and go deeper
           if(matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 
@@ -262,9 +262,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         }
         else
@@ -298,9 +298,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 
@@ -342,9 +342,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 
@@ -416,9 +416,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<const Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<const Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 
@@ -494,9 +494,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_to_insert->descriptor[node->index_split_bit]) {
-            node = static_cast<Node*>(node->right);
+            node = node->right;
           } else {
-            node = static_cast<Node*>(node->left);
+            node = node->left;
           }
         } else {
 
@@ -596,9 +596,9 @@ public:
 
           //ds check the split bit and go deeper
           if (matchable_query->descriptor[node_current->index_split_bit]) {
-            node_current = static_cast<Node*>(node_current->right);
+            node_current = node_current->right;
           } else {
-            node_current = static_cast<Node*>(node_current->left);
+            node_current = node_current->left;
           }
         } else {
 

@@ -73,7 +73,7 @@ public:
 #endif
 
   //! @brief default destructor
-  ~BinaryMatchable() {
+  virtual ~BinaryMatchable() {
     objects.clear();
     image_identifiers.clear();
   }
