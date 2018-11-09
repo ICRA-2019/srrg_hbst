@@ -16,8 +16,11 @@ if(SRRG_HBST_HAS_OPENCV)
   add_executable(match_subclasses_incremental opencv/match_subclasses_incremental.cpp)
   target_link_libraries(match_subclasses_incremental ${OpenCV_LIBS})
   
-  add_executable(score_opencv opencv/score_opencv.cpp)
-  target_link_libraries(score_opencv ${OpenCV_LIBS})
+  add_executable(score_images opencv/score_images.cpp)
+  target_link_libraries(score_images ${OpenCV_LIBS})
+  
+  add_executable(stress_test opencv/stress_test.cpp)
+  target_link_libraries(stress_test ${OpenCV_LIBS})
   
   add_executable(tracker opencv/tracker.cpp)
   target_link_libraries(tracker ${OpenCV_LIBS})

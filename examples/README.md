@@ -25,15 +25,15 @@ For the individual trees we have an example with linked keypoints:
     
 In the case of the incremental tree check out:
     
-    match_features_incremental  test_images/
+    match_features_incremental test_images/
     
 The same task as previously but with subclassing the matchable type:
     
-    match_subclasses_incremental  test_images/
+    match_subclasses_incremental test_images/
     
 Who is interested in only image scores finds a simple example in:
 
-    score_opencv test_images/
+    score_images test_images/
 
 Additionally we provide a straightforward feature tracking application based on HBST:   
   
@@ -51,6 +51,14 @@ Furthermore we provide a live visual place recognition application:
     
 Which displays computed features for the current image (blue) and highlights them (green) in case they have been matched against a feature from a database image. <br>
 The parameter `-space` controls the minimum number of images that have to lie between the current image and the database image (e.g. 100).
+
+Stress testing:
+
+    stress_test test_images/
+    
+This executable will repeatedly detect keypoints and compute descriptors for the same image and feed it to the database, as if it were new input. <br>
+The objective is to observe the absorption behavior of HBST (i.e. memory growth) and timings. <br>
+The observed behavior changes significantly in case absorption/merging is disabled (comment `add_definitions(-DSRRG_MERGE_DESCRIPTORS)` in root `CMakeLists.txt`).
 
 ## Eigen (3):
 More robust descriptor track based tree construction can be inspected in the directory `eigen`:
