@@ -1,17 +1,17 @@
-    HBST: Hamming Binary Search Tree Header-only library
-    
+# HBST: Hamming Binary Search Tree | [Wiki](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
+Lightweight and lightning-fast header-only library for binary descriptor-based VPR: `85 kB with 1'000 lines of C++ code`
+  
 [<img src="https://img.youtube.com/vi/N6RspfFdrOI/0.jpg" width="250">](https://www.youtube.com/watch?v=N6RspfFdrOI)
 [<img src="https://img.youtube.com/vi/MwmzJygl8XE/0.jpg" width="250">](https://www.youtube.com/watch?v=MwmzJygl8XE)
 [<img src="https://img.youtube.com/vi/f3h398t_zWo/0.jpg" width="250">](https://www.youtube.com/watch?v=f3h398t_zWo)
 
 Contributors: Dominik Schlegel, Giorgio Grisetti
-## [* check out the wiki for more videos and experimental results! *](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
 
-Supported platforms:
+Supported (i.e. Tested) platforms:
 - Linux: Ubuntu 14.04 LTS, Ubuntu 16.04 LTS, Ubuntu 18.04 LTS
 
 Minimum requirements:
-- [CMake](https://cmake.org) 2.8.3 or higher
+- [CMake](https://cmake.org) 2.8 or higher
 - [C++ 11](http://en.cppreference.com) or higher
 - [GCC](https://gcc.gnu.org) 5 or higher
 
@@ -22,37 +22,54 @@ Optional:
 - [catkin Command Line Tools](https://catkin-tools.readthedocs.io/en/latest/) for easy CMake project integration
 - [ROS Indigo/Kinetic/Melodic](http://wiki.ros.org/ROS/Installation) for live ROS nodes (make sure you have a sane OpenCV installation)
 
-## [* example code *](examples) (catkin ready!)
-Out of source CMake build sequence for example code (in project root):
+## Installation instructions (Linux)
+- The easy way:
 
-    mkdir build
-    cd build
-    cmake ..
-    make
+Use the CMake install rule to register HBST in your system:
 
-A simple example program with visuals can be called with (from the project root, when OpenCV is installed):
+    cd /directory/where/you/downloaded/srrg_hbst/
+    cmake .
+    sudo make install
+    
+To remove HBST from your system we provide a *ballistic* command (use at own risk):
 
-    build/examples/match_opencv_indices examples/test_images
-
-Showing the HBST matching performance for a sequence of 10 images using `indexed` Matchables. <br>
-The example sequence of 10 images is part of the repository and can be found under `examples/test_images`. <br>
-Note that `image_09.pgm` is identical to `image_00.pgm`, this is to validate 100% retrieval for identical images (database integrity). <br> 
-All images are courtesy of the [KITTI Visual Odometry / SLAM Evaluation 2012](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
+    cd /directory/where/you/downloaded/srrg_hbst/
+    sudo make uninstall
 
 ---
-Alternative catkin build:
+- The clean way:
 
-    catkin build srrg_hbst
+Add your local library path to your local environment variables:
+
+    echo "export HBST_ROOT=/directory/where/you/downloaded/srrg_hbst/" >> ~/.profile
+
+In your CMake project, include the header-only library as such without using any CMake modules:
+
+    include_directories($ENV{HBST_ROOT})
+
+---
+- The [ROS](http://www.ros.org/) way:
+
+In your catkin workspace, create a symbolic link to the downloaded library directory:
+
+    cd /your/catkin/workspace/src/
+    ln -s /directory/where/you/downloaded/srrg_hbst/
     
-An example using the incremental HBST can be run from the project root with:
+In your catkin CMake project, retrieve the HBST package by adding the line:
 
-    rosrun srrg_hbst match_incremental_opencv_pointers examples/test_images
+    find_package(catkin REQUIRED COMPONENTS srrg_hbst)
 
+## [Example code repository](https://gitlab.com/srrg-software/srrg_hbst_examples) ([catkin](https://catkin-tools.readthedocs.io) ready!)
+Due to the large number of provided example binaries and since we want 
+to keep this repository as lightweight as possible, <br>
+we created a separate repository for HBST example code. <br>
+The example binaries include fully self-contained integrations with `Eigen`, `OpenCV`, `QGLViewer` and `ROS`.
 
 ## Build your own Descriptor/Node types!
-The 2 base classes: `BinaryNode` and `BinaryMatchable` (see `src/srrg_hbst_types`) can easily be inherited. <br>
+The 2 base classes: `BinaryNode` and `BinaryMatchable` (see `srrg_hbst/types/`) can easily be inherited. <br>
 Users might specify their own, augmented binary descriptor and node classes with specific leaf spawning. <br>
-Two variants of subclassing are already provided in `src/srrg_hbst_types_probabilistic`.
+Two variants of subclassing are already provided in `srrg_hbst/types_probabilistic/`. <br>
+Others are available in the [example code](https://gitlab.com/srrg-software/srrg_hbst_examples).
 
 ## It doesn't work?
 [Open an issue](https://gitlab.com/srrg-software/srrg_hbst/issues) or contact the maintainer (see package.xml)

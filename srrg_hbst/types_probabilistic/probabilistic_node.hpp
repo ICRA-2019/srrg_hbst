@@ -1,5 +1,5 @@
 #pragma once
-#include "srrg_hbst_types/binary_node.hpp"
+#include "srrg_hbst/types/binary_node.hpp"
 #include "probabilistic_matchable.hpp"
 
 namespace srrg_hbst {
