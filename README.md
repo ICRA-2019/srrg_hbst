@@ -1,4 +1,4 @@
-# HBST: Hamming Binary Search Tree | [Wiki](https://gitlab.com/srrg-software/srrg_hbst/wikis/home)
+# HBST: Hamming Binary Search Tree | [Wiki](https://gitlab.com/srrg-software/srrg_hbst/wikis/home) | [Example code](https://gitlab.com/srrg-software/srrg_hbst_examples)
 Lightweight and lightning-fast header-only library for binary descriptor-based VPR: `85 kB with 1'000 lines of C++ code`
   
 [<img src="https://img.youtube.com/vi/N6RspfFdrOI/0.jpg" width="250">](https://www.youtube.com/watch?v=N6RspfFdrOI)
