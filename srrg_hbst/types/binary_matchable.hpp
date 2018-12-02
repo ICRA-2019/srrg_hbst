@@ -92,15 +92,26 @@ public:
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void merge(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
     objects.insert(matchable_->objects.begin(), matchable_->objects.end());
-    image_identifiers.insert(image_identifiers.begin(), matchable_->image_identifiers.begin(), matchable_->image_identifiers.end());
+    image_identifiers.insert(image_identifiers.end(), matchable_->image_identifiers.begin(), matchable_->image_identifiers.end());
   }
 
   //! @brief merges a matchable with THIS matchable (desirable when having to store identical descriptors)
   //! @brief this method has been created for quick matchable merging where matchable_ only contains a single entry for identifier and pointer
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void mergeSingle(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
-    objects.insert(std::make_pair(_image_identifier, _object));
-    image_identifiers.push_back(_image_identifier);
+    objects.insert(std::make_pair(matchable_->_image_identifier, matchable_->_object));
+    image_identifiers.push_back(matchable_->_image_identifier);
+  }
+
+  //! @brief enables manual update of the inner linked object
+  inline void setObject(ObjectType object_) {_object = std::move(object_);}
+
+  //! @brief enables manual update of all linked objects (without changing the referenced image number)
+  inline void setObjects(ObjectType object_) {
+    setObject(object_);
+    for (auto& object: objects) {
+      object.second = std::move(object_);
+    }
   }
 
 #ifdef SRRG_HBST_HAS_OPENCV
@@ -161,6 +172,10 @@ private:
 
   //! @brief single value access only: linked object to descriptor (e.g. keypoint or an index)
   ObjectType _object;
+
+  //! @brief allow direct access for processing classes
+  template<typename BinaryNodeType_>
+  friend class BinaryTree;
 };
 
 template<typename ObjectType_>

@@ -26,10 +26,12 @@ public:
 
 #ifdef SRRG_MERGE_DESCRIPTORS
   //! @brief component object used for matchable merging
-  struct Mergable {
-    const Matchable* query = nullptr; //to be absorbed
-    Matchable* reference   = nullptr; //absorbing
+  struct MatchableMerge {
+    const Matchable* query = nullptr; //to be absorbed matchable
+    ObjectType query_object;   //affected query object that might have to update its matchable reference
+    Matchable* reference   = nullptr; //absorbing matchable
   };
+  typedef std::vector<MatchableMerge> MatchableMergeVector;
 #endif
 
   //! @brief component object used for tree training
@@ -58,7 +60,7 @@ public:
    _added_identifiers_train.clear();
    _trainables.clear();
 #ifdef SRRG_MERGE_DESCRIPTORS
-    _mergables.clear();
+    _merged_matchables.clear();
 #endif
   }
 
@@ -77,7 +79,7 @@ public:
     _added_identifiers_train.insert(identifier);
     _trainables.clear();
 #ifdef SRRG_MERGE_DESCRIPTORS
-    _mergables.clear();
+    _merged_matchables.clear();
 #endif
   }
 
@@ -98,7 +100,7 @@ public:
     _added_identifiers_train.insert(identifier);
     _trainables.clear();
 #ifdef SRRG_MERGE_DESCRIPTORS
-    _mergables.clear();
+    _merged_matchables.clear();
 #endif
   }
 
@@ -142,6 +144,12 @@ public:
   const size_t size() const {
     return _added_identifiers_train.size();
   }
+
+#ifdef SRRG_MERGE_DESCRIPTORS
+  //! @brief matchable merges from last match/add/train call - intended for external bookkeeping update only
+  //! @returns a vector of effective merges between matchables (recall that the memory of Mergable.query is already freed)
+  const MatchableMergeVector getMerges() const {return _merged_matchables;}
+#endif
 
   const uint64_t getNumberOfMatches(const MatchableVector& matchables_query_, const uint32_t& maximum_distance_ = 25) const {
     if (matchables_query_.empty()) {
@@ -480,6 +488,12 @@ public:
     //ds nodes to update after the addition of matchables to leafs
     std::set<Node*> nodes_to_update;
 
+#ifdef SRRG_MERGE_DESCRIPTORS
+    //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
+    _merged_matchables.resize(_matchables_to_train.size());
+    uint64_t index_mergable = 0;
+#endif
+
     //ds for each new descriptor - buffering new matchables and merging identical ones
     uint64_t index_new_matchable = 0;
     for (uint64_t index_matchable = 0; index_matchable < _matchables_to_train.size(); ++index_matchable) {
@@ -501,18 +515,27 @@ public:
         } else {
 
 #ifdef SRRG_MERGE_DESCRIPTORS
-          //ds check if we can absorb this matchable
+          //ds check if we can absorb this matchable instead of having to insert it
           bool insertion_required = true;
           for (const Matchable* matchable_reference: node->matchables) {
             if (matchable_reference->distance(matchable_to_insert) <= maximum_distance_for_merge) {
 
               //ds absorb the matchable on the spot - bare with me
               Matchable* merger = const_cast<Matchable*>(matchable_reference);
-              if (merger != matchable_to_insert) {  //ds TODO enforce by construction and blast this line
+
+              //ds avoid merging matchables we just inserted! (TODO implement proper delayed integration in Nodes)
+              if (merger != matchable_to_insert && merger->_image_identifier != matchable_to_insert->_image_identifier) {
+                assert(matchable_to_insert->objects.size() == 1);
+                _merged_matchables[index_mergable].query        = matchable_to_insert;
+                _merged_matchables[index_mergable].reference    = merger;
+                _merged_matchables[index_mergable].query_object = matchable_to_insert->_object;
+
+                //ds perform merge
                 merger->mergeSingle(matchable_to_insert);
                 delete matchable_to_insert;
+                ++index_mergable;
+                insertion_required = false;
               }
-              insertion_required = false;
               break;
             }
           }
@@ -532,6 +555,9 @@ public:
       }
     }
     _matchables_to_train.resize(index_new_matchable);
+#ifdef SRRG_MERGE_DESCRIPTORS
+    _merged_matchables.resize(index_mergable);
+#endif
 
     //ds spawn leaves if requested
     for (Node* node: nodes_to_update) {
@@ -579,8 +605,11 @@ public:
 
 #ifdef SRRG_MERGE_DESCRIPTORS
     //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
-    _mergables.resize(matchables_.size());
+    _merged_matchables.resize(matchables_.size());
     uint64_t index_mergable  = 0;
+
+    //ds currently we allow merging maximally once per reference matchable
+    std::set<const Matchable*> merged_reference_matchables;
 #endif
 
     //ds for each descriptor
@@ -617,13 +646,14 @@ public:
           }
 
 #ifdef SRRG_MERGE_DESCRIPTORS
-          //ds if we can merge the query matchable
-          if (matchable_reference) {
+          //ds if we can merge the query matchable into the reference
+          if (matchable_reference && merged_reference_matchables.count(matchable_reference) == 0) {
 
             //ds bookkeep matchable for merge
-            _mergables[index_mergable].query     = matchable_query;
-            _mergables[index_mergable].reference = matchable_reference;
+            _merged_matchables[index_mergable].query     = matchable_query;
+            _merged_matchables[index_mergable].reference = matchable_reference;
             ++index_mergable;
+            merged_reference_matchables.insert(matchable_reference);
           } else {
 #endif
 
@@ -643,11 +673,17 @@ public:
     }
     _trainables.resize(index_trainable);
 #ifdef SRRG_MERGE_DESCRIPTORS
-    _mergables.resize(index_mergable);
+    _merged_matchables.resize(index_mergable);
 
     //ds merge matchables
-    for (Mergable& mergable: _mergables) {
-      if (mergable.reference != mergable.query) { //ds TODO enforce by construction and blast this line
+    for (MatchableMerge& mergable: _merged_matchables) {
+      if (mergable.reference != mergable.query) {
+        assert(mergable.query->objects.size() == 1);
+
+        //ds bookkeep reference object of merged matchable
+        mergable.query_object = std::move(mergable.query->_object);
+
+        //ds perform merge
         mergable.reference->mergeSingle(mergable.query);
 
         //ds free query (!) recall that the tree takes ownership of the matchables
@@ -893,8 +929,9 @@ protected:
   std::vector<Trainable> _trainables;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
-  //! @brief bookkeeping: mergable matchables resulting from last matchAndAdd call
-  std::vector<Mergable> _mergables;
+  //! @brief bookkeeping: merged matchable pairs (query -> reference) resulting from last matchAndAdd call
+  //! over Mergable.query one has access to the merged (=freed) matchable and can update external bookkeeping accordingly
+  MatchableMergeVector _merged_matchables;
 #endif
 };
 
