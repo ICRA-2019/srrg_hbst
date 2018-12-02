@@ -20,6 +20,7 @@ public:
   typedef typename Node::Match Match;
   typedef typename Node::real_type real_type;
   typedef typename Matchable::ObjectType ObjectType;
+  typedef std::pair<uint64_t, ObjectType> ObjectMapElement;
   typedef std::vector<Match> MatchVector;
   typedef std::map<uint64_t, std::vector<Match>> MatchVectorMap;
   typedef std::pair<uint64_t, std::vector<Match>> MatchVectorMapElement;
@@ -224,7 +225,8 @@ public:
           std::set<uint64_t> matched_references;
           for (const Matchable* matchable_reference: node_current->matchables) {
             if (maximum_distance_ > matchable_query->distance(matchable_reference)) {
-              for(const uint64_t& identifier_reference: matchable_reference->image_identifiers) {
+              for(const ObjectMapElement& object: matchable_reference->objects) {
+                const uint64_t& identifier_reference = object.first;
 
                 //ds the query matchable can be matched only once to each reference image
                 if (matched_references.count(identifier_reference) == 0) {
@@ -454,7 +456,7 @@ public:
     }
 
     //ds store arguments
-    _added_identifiers_train.insert(matchables_.front()->image_identifiers[0]);
+    _added_identifiers_train.insert(matchables_.front()->_image_identifier);
     _matchables_to_train.insert(_matchables_to_train.end(), matchables_.begin(), matchables_.end());
 
     //ds train based on set matchables (no effect for do nothing train mode)
@@ -521,17 +523,18 @@ public:
             if (matchable_reference->distance(matchable_to_insert) <= maximum_distance_for_merge) {
 
               //ds absorb the matchable on the spot - bare with me
-              Matchable* merger = const_cast<Matchable*>(matchable_reference);
+              Matchable* merging_matchable = const_cast<Matchable*>(matchable_reference);
 
               //ds avoid merging matchables we just inserted! (TODO implement proper delayed integration in Nodes)
-              if (merger != matchable_to_insert && merger->_image_identifier != matchable_to_insert->_image_identifier) {
+              if (merging_matchable != matchable_to_insert &&
+                  merging_matchable->_image_identifier != matchable_to_insert->_image_identifier) {
                 assert(matchable_to_insert->objects.size() == 1);
                 _merged_matchables[index_mergable].query        = matchable_to_insert;
-                _merged_matchables[index_mergable].reference    = merger;
-                _merged_matchables[index_mergable].query_object = matchable_to_insert->_object;
+                _merged_matchables[index_mergable].reference    = merging_matchable;
+                _merged_matchables[index_mergable].query_object = std::move(matchable_to_insert->_object);
 
                 //ds perform merge
-                merger->mergeSingle(matchable_to_insert);
+                merging_matchable->mergeSingle(matchable_to_insert);
                 delete matchable_to_insert;
                 ++index_mergable;
                 insertion_required = false;
@@ -581,7 +584,7 @@ public:
     if (matchables_.empty()) {
       return;
     }
-    const uint64_t identifier_image_query = matchables_.front()->image_identifiers[0];
+    const uint64_t identifier_image_query = matchables_.front()->_image_identifier;
 
     //ds check if we have to build an initial tree first
     if (!_root) {
@@ -648,10 +651,12 @@ public:
 #ifdef SRRG_MERGE_DESCRIPTORS
           //ds if we can merge the query matchable into the reference
           if (matchable_reference && merged_reference_matchables.count(matchable_reference) == 0) {
+            assert(mergable.query->objects.size() == 1);
 
             //ds bookkeep matchable for merge
-            _merged_matchables[index_mergable].query     = matchable_query;
-            _merged_matchables[index_mergable].reference = matchable_reference;
+            _merged_matchables[index_mergable].query        = matchable_query;
+            _merged_matchables[index_mergable].reference    = matchable_reference;
+            _merged_matchables[index_mergable].query_object = std::move(matchable_query->_object);
             ++index_mergable;
             merged_reference_matchables.insert(matchable_reference);
           } else {
@@ -678,10 +683,6 @@ public:
     //ds merge matchables
     for (MatchableMerge& mergable: _merged_matchables) {
       if (mergable.reference != mergable.query) {
-        assert(mergable.query->objects.size() == 1);
-
-        //ds bookkeep reference object of merged matchable
-        mergable.query_object = std::move(mergable.query->_object);
 
         //ds perform merge
         mergable.reference->mergeSingle(mergable.query);
@@ -700,6 +701,7 @@ public:
       trainable.node->matchables.push_back(trainable.matchable);
       nodes_to_update.insert(trainable.node);
       new_matchables[index_matchable] = trainable.matchable;
+      ++index_matchable;
     }
     for (Node* node: nodes_to_update) {
       node->spawnLeafs(train_mode_);
@@ -804,7 +806,8 @@ protected:
                         const MatchableVector& matchables_reference_,
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_) const {
-    const uint64_t& identifer_tree_query = matchable_query_->image_identifiers[0];
+    const uint64_t& identifer_tree_query = matchable_query_->_image_identifier;
+    ObjectType object_query = std::move(matchable_query_->objects.at(identifer_tree_query));
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
@@ -816,7 +819,8 @@ protected:
       if (distance < maximum_distance_matching_) {
 
         //ds for every reference in this matchable
-        for (const uint64_t& identifer_tree_reference: matchable_reference->image_identifiers) {
+        for (const ObjectMapElement& object: matchable_reference->objects) {
+          const uint64_t& identifer_tree_reference = object.first;
 
           //ds check if there already is a match for this identifier
           try {
@@ -824,7 +828,7 @@ protected:
             //ds update match if current is better
             if (distance < best_matches_.at(identifer_tree_reference).distance) {
               best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
-              best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->objects.at(identifer_tree_reference);
+              best_matches_.at(identifer_tree_reference).object_reference    = object.second;
               best_matches_.at(identifer_tree_reference).distance            = distance;
             }
           } catch (const std::out_of_range& /*exception*/) {
@@ -832,8 +836,8 @@ protected:
             //ds add a new match
             best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
                                                                                 matchable_reference,
-                                                                                matchable_query_->objects.at(identifer_tree_query),
-                                                                                matchable_reference->objects.at(identifer_tree_reference),
+                                                                                object_query,
+                                                                                object.second,
                                                                                 distance)));
           }
         }
@@ -853,7 +857,8 @@ protected:
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_,
                         Matchable*& matchable_reference_for_merge_) const {
-    const uint64_t& identifer_tree_query = matchable_query_->image_identifiers[0];
+    const uint64_t& identifer_tree_query = matchable_query_->_image_identifier;
+    ObjectType object_query = std::move(matchable_query_->objects.at(identifer_tree_query));
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
@@ -861,37 +866,39 @@ protected:
       //ds compute the descriptor distance
       const uint32_t distance = matchable_query_->distance(matchable_reference);
 
-      //ds if the matchable descriptors are identical - we can merge
-      if (distance <= maximum_distance_for_merge) {
-
-        //ds behold the power of C++ (we want to keep the MatchableVector elements const)
-        matchable_reference_for_merge_ = const_cast<Matchable*>(matchable_reference);
-      }
-
       //ds if matching distance is within the threshold
       if (distance < maximum_distance_matching_) {
 
         //ds for every reference in this matchable
-        for (const uint64_t& identifer_tree_reference: matchable_reference->image_identifiers) {
+        for (const ObjectMapElement& object: matchable_reference->objects) {
+          const uint64_t& identifer_tree_reference = object.first;
 
           //ds check if there already is a match for this identifier
           try {
 
             //ds update match if current is better
             if (distance < best_matches_.at(identifer_tree_reference).distance) {
-              best_matches_.at(identifer_tree_reference).matchable_reference  = matchable_reference;
-              best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->objects.at(identifer_tree_reference);
-              best_matches_.at(identifer_tree_reference).distance             = distance;
+              best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
+              best_matches_.at(identifer_tree_reference).object_reference    = object.second;
+              best_matches_.at(identifer_tree_reference).distance            = distance;
             }
           } catch (const std::out_of_range& /*exception*/) {
 
             //ds add a new match
             best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
                                                                                 matchable_reference,
-                                                                                matchable_query_->objects.at(identifer_tree_query),
-                                                                                matchable_reference->objects.at(identifer_tree_reference),
+                                                                                object_query,
+                                                                                object.second,
                                                                                 distance)));
           }
+        }
+
+        //ds if the matchable descriptors are identical - we can merge - note that maximum_distance_for_merge must always be smaller than maximum_distance_matching_
+        assert(maximum_distance_for_merge < maximum_distance_matching_);
+        if (distance <= maximum_distance_for_merge) {
+
+          //ds behold the power of C++ (we want to keep the MatchableVector elements const)
+          matchable_reference_for_merge_ = const_cast<Matchable*>(matchable_reference);
         }
       }
     }

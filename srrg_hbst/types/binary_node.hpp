@@ -230,20 +230,41 @@ protected:
                                      uint64_t& number_of_set_bits_total_) const {
     assert(0 < matchables_.size());
 
-    //ds count
+    //ds count set bits of all matchables in this node
     uint64_t number_of_set_bits = 0;
-
-    //ds just add the bits up (a one counts automatically as one)
+#ifdef SRRG_MERGE_DESCRIPTORS
+    uint64_t number_of_matchables      = 0;
+    uint64_t number_of_set_bits_actual = 0;
     for (const Matchable* matchable: matchables_) {
-      number_of_set_bits += matchable->descriptor[index_split_bit_];
+
+      //ds accumulate matchable count TODO enable proper bookkeeping to get rid of this
+      const uint64_t number_of_objects = matchable->number_of_objects;
+      number_of_matchables += number_of_objects;
+      if (matchable->descriptor[index_split_bit_]) {
+
+        //ds make sure to weight merged matchables! default is 1, if not merged
+        number_of_set_bits += number_of_objects;
+        ++number_of_set_bits_actual;
+      }
     }
 
-    //ds set total
+    //ds this number is used to allocate for the partitioning
+    //ds so we cannot count merged matchables twice here
+    number_of_set_bits_total_ = number_of_set_bits_actual;
+#else
+    const uint64_t number_of_matchables = matchables_.size();
+    for (const Matchable* matchable: matchables_) {
+
+      //ds just add the bits up (a set counts automatically as one)
+      number_of_set_bits += matchable->descriptor[index_split_bit_];
+    }
     number_of_set_bits_total_ = number_of_set_bits;
-    assert(number_of_set_bits_total_ <= matchables_.size());
+#endif
+    assert(number_of_set_bits <= number_of_matchables);
+
 
     //ds return ratio
-    return (static_cast<real_type>(number_of_set_bits)/matchables_.size());
+    return (static_cast<real_type>(number_of_set_bits)/number_of_matchables);
   }
 
 //ds fields TODO encapsulate

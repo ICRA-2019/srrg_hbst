@@ -24,6 +24,7 @@ public:
   //! @brief descriptor type (extended by augmented bits, no effect if zero)
   typedef std::bitset<descriptor_size_bits_> Descriptor;
   typedef ObjectType_ ObjectType;
+  typedef std::map<uint64_t, ObjectType_> ObjectMap;
 
 //ds shared properties
 public:
@@ -53,9 +54,9 @@ public:
   BinaryMatchable(ObjectType object_,
                   const Descriptor& descriptor_,
                   const uint64_t& image_identifier_ = 0): descriptor(descriptor_),
+                                                          number_of_objects(1),
                                                           _image_identifier(image_identifier_),
                                                           _object(std::move(object_)) {
-    image_identifiers.push_back(_image_identifier);
     objects.insert(std::make_pair(_image_identifier, _object));
   }
 
@@ -75,7 +76,6 @@ public:
   //! @brief default destructor
   virtual ~BinaryMatchable() {
     objects.clear();
-    image_identifiers.clear();
   }
 
 //ds functionality
@@ -92,15 +92,15 @@ public:
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void merge(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
     objects.insert(matchable_->objects.begin(), matchable_->objects.end());
-    image_identifiers.insert(image_identifiers.end(), matchable_->image_identifiers.begin(), matchable_->image_identifiers.end());
+    number_of_objects = objects.size();
   }
 
   //! @brief merges a matchable with THIS matchable (desirable when having to store identical descriptors)
   //! @brief this method has been created for quick matchable merging where matchable_ only contains a single entry for identifier and pointer
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void mergeSingle(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
-    objects.insert(std::make_pair(matchable_->_image_identifier, matchable_->_object));
-    image_identifiers.push_back(matchable_->_image_identifier);
+    objects.insert(std::make_pair(matchable_->_image_identifier, std::move(matchable_->_object)));
+    number_of_objects = objects.size();
   }
 
   //! @brief enables manual update of the inner linked object
@@ -158,11 +158,11 @@ public:
   //! @brief descriptor data string vector
   const Descriptor descriptor;
 
-  //! @brief image reference indices corresponding to this matchable
-  std::vector<uint64_t> image_identifiers;
-
   //! @brief a connected object correspondences - when using this field one must ensure the permanence of the referenced object!
-  std::map<uint64_t, ObjectType> objects;
+  ObjectMap objects;
+
+  //! @brief quick access to the number of contained objects/image_identifiers (default: 1)
+  size_t number_of_objects;
 
 //ds fast access (for a matchable with only single values, internal only)
 private:
