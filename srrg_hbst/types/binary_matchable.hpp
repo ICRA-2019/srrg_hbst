@@ -165,7 +165,7 @@ public:
   size_t number_of_objects;
 
 //ds fast access (for a matchable with only single values, internal only)
-private:
+protected:
 
   //! @brief single value access only: rlinked object to group of descriptors (e.g. an image or image index)
   const uint64_t _image_identifier;

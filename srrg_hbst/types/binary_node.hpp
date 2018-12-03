@@ -14,8 +14,7 @@ namespace srrg_hbst {
   };
 
 template<typename BinaryMatchableType_, typename real_type_ = double>
-class BinaryNode
-{
+class BinaryNode {
 
   //ds readability
   using Node = BinaryNode<BinaryMatchableType_, real_type_>;
@@ -35,12 +34,12 @@ public:
 
   //ds access only through this constructor: no mask provided
   BinaryNode(const MatchableVector& matchables_,
-             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): Node(0, 0, matchables_, Descriptor().set(), train_mode_) {}
+             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): Node(nullptr, 0, matchables_, Descriptor().set(), train_mode_) {}
 
   //ds access only through this constructor: mask provided
   BinaryNode(const MatchableVector& matchables_,
              Descriptor bit_mask_,
-             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): Node(0, 0, matchables_, bit_mask_, train_mode_) {}
+             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven): Node(nullptr, 0, matchables_, bit_mask_, train_mode_) {}
 
   //ds the default constructor is triggered by subclasses - the responsibility of attribute initialization is left to the subclass
   //ds this is required, since we do not want to trigger the automatic leaf spawning of the baseclass in a subclass
@@ -65,7 +64,7 @@ public:
     }
 
     //ds exit if we have insufficient data
-    if (matchables.size() < maximum_leaf_size) {
+    if (_number_of_matchables < maximum_leaf_size) {
       return false;
     }
 
@@ -207,6 +206,15 @@ public:
     }
   }
 
+//ds getters
+public:
+
+  const MatchableVector& getMatchables() const {return matchables;}
+  const uint64_t& getDepth() const {return depth;}
+  const int32_t& indexSplitBit() const {return index_split_bit;}
+  const uint64_t& getNumberOfSetBits() const {return number_of_on_bits_total;}
+  const bool& hasLeafs() const {return has_leafs;}
+
 //ds inner constructors (used for recursive tree building)
 protected:
 
@@ -215,10 +223,19 @@ protected:
              const uint64_t& depth_,
              const MatchableVector& matchables_,
              Descriptor bit_mask_,
-             const SplittingStrategy& train_mode_): depth(depth_),
+             const SplittingStrategy& train_mode_): parent(parent_),
                                                     matchables(matchables_),
-                                                    bit_mask(bit_mask_),
-                                                    parent(parent_) {
+                                                    depth(depth_),
+                                                    bit_mask(bit_mask_) {
+#ifdef SRRG_MERGE_DESCRIPTORS
+    //ds recompute current number of contained merged matchables TODO make this less horribly wasteful
+    _number_of_matchables = 0;
+    for (const Matchable* matchable: matchables) {
+      _number_of_matchables += matchable->number_of_objects;
+    }
+#else
+    _number_of_matchables = matchables.size();
+#endif
     spawnLeafs(train_mode_);
   }
 
@@ -229,21 +246,20 @@ protected:
                                      const MatchableVector& matchables_,
                                      uint64_t& number_of_set_bits_total_) const {
     assert(0 < matchables_.size());
+    assert(0 < _number_of_matchables);
+    assert(matchables_.size() <= _number_of_matchables);
 
     //ds count set bits of all matchables in this node
     uint64_t number_of_set_bits = 0;
 #ifdef SRRG_MERGE_DESCRIPTORS
-    uint64_t number_of_matchables      = 0;
-    uint64_t number_of_set_bits_actual = 0;
+    uint64_t number_of_set_bits_actual  = 0;
     for (const Matchable* matchable: matchables_) {
 
-      //ds accumulate matchable count TODO enable proper bookkeeping to get rid of this
-      const uint64_t number_of_objects = matchable->number_of_objects;
-      number_of_matchables += number_of_objects;
+      //ds accumulate set bit matchable counts
       if (matchable->descriptor[index_split_bit_]) {
 
         //ds make sure to weight merged matchables! default is 1, if not merged
-        number_of_set_bits += number_of_objects;
+        number_of_set_bits += matchable->number_of_objects;
         ++number_of_set_bits_actual;
       }
     }
@@ -252,7 +268,6 @@ protected:
     //ds so we cannot count merged matchables twice here
     number_of_set_bits_total_ = number_of_set_bits_actual;
 #else
-    const uint64_t number_of_matchables = matchables_.size();
     for (const Matchable* matchable: matchables_) {
 
       //ds just add the bits up (a set counts automatically as one)
@@ -260,24 +275,41 @@ protected:
     }
     number_of_set_bits_total_ = number_of_set_bits;
 #endif
-    assert(number_of_set_bits <= number_of_matchables);
-
+    assert(number_of_set_bits <= _number_of_matchables);
 
     //ds return ratio
-    return (static_cast<real_type>(number_of_set_bits)/number_of_matchables);
+    return (static_cast<real_type>(number_of_set_bits)/_number_of_matchables);
   }
 
-//ds fields TODO encapsulate
+//ds public fields
 public:
 
-  //! @brief depth of this node (number of splits passed)
-  uint64_t depth = 0;
+  //! @brief leaf containing all unset bits
+  Node* left = nullptr;
+
+  //! @brief leaf containing all set bits
+  Node* right = nullptr;
+
+  //! @brief parent node (if any, for root:parent=0)
+  Node* parent = nullptr;
+
+  //! @brief minimum number of matchables in a node before splitting
+  static uint64_t maximum_leaf_size;
+
+  //! @brief maximum achieved descriptor group partitioning using the index_split_bit
+  static real_type maximum_partitioning;
+
+  //! @brief maximum tree depth (leaf spawning blocks if reached, default: descriptor dimension)
+  static uint32_t maximum_depth;
+
+//ds fields
+protected:
 
   //! @brief matchables contained in this node
   MatchableVector matchables;
 
-  //! @brief minimum number of matchables in a node before splitting
-  static uint64_t maximum_leaf_size;
+  //! @brief depth of this node (number of splits passed)
+  uint64_t depth = 0;
 
   //! @brief the split bit diving potential leafs of this node
   int32_t index_split_bit = -1;
@@ -291,26 +323,19 @@ public:
   //! @brief achieved descriptor group partitioning using the index_split_bit
   real_type partitioning = 1;
 
-  //! @brief maximum achieved descriptor group partitioning using the index_split_bit
-  static real_type maximum_partitioning;
-
   //! @brief bit splitting mask considered before choosing index_split_bit
   Descriptor bit_mask;
 
-  //! @brief leaf containing all unset bits
-  Node* left = nullptr;
-
-  //! @brief leaf containing all set bits
-  Node* right = nullptr;
-
-  //! @brief parent node (if any, for root:parent=0)
-  Node* parent = nullptr;
-
-  //! @brief maximum tree depth (leaf spwaning blocks if reached, default: descriptor dimension)
-  static uint32_t maximum_depth;
-
   //ds random number generator, used for random splitting (for all nodes)
   static std::mt19937 random_number_generator;
+
+  //! @brief number of matchables contained in this node (counting merged matchables as the number of consumed matchables)
+  uint64_t _number_of_matchables = 0;
+
+  //! @brief allow direct access for processing classes
+  template<typename BinaryNodeType_>
+  friend class BinaryTree;
+
 };
 
 //ds default configuration
@@ -322,4 +347,5 @@ template<typename BinaryMatchableType_, typename real_type_>
 uint32_t BinaryNode<BinaryMatchableType_, real_type_>::maximum_depth          = BinaryMatchableType_::descriptor_size_bits;
 template<typename BinaryMatchableType_, typename real_type_>
 std::mt19937 BinaryNode<BinaryMatchableType_, real_type_>::random_number_generator;
+
 }

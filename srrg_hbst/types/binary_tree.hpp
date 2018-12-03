@@ -6,8 +6,7 @@ namespace srrg_hbst {
 
 //! @class the binary tree class, consisting of binary nodes holding binary descriptors
 template<typename BinaryNodeType_>
-class BinaryTree
-{
+class BinaryTree {
 
 //ds template forwarding
 public:
@@ -39,7 +38,6 @@ public:
   struct Trainable {
     Node* node           = nullptr;
     Matchable* matchable = nullptr;
-    bool spawn_leafs     = false;
   };
 
   //! @brief image score for a reference image (added)
@@ -224,16 +222,22 @@ public:
           //ds check current descriptors for each reference image in this node and exit
           std::set<uint64_t> matched_references;
           for (const Matchable* matchable_reference: node_current->matchables) {
-            if (maximum_distance_ > matchable_query->distance(matchable_reference)) {
+            if (matchable_query->distance(matchable_reference) < maximum_distance_) {
+#ifdef SRRG_MERGE_DESCRIPTORS
               for(const ObjectMapElement& object: matchable_reference->objects) {
                 const uint64_t& identifier_reference = object.first;
+#else
+              const uint64_t& identifier_reference = matchable_reference->_image_identifier;
+#endif
 
                 //ds the query matchable can be matched only once to each reference image
                 if (matched_references.count(identifier_reference) == 0) {
                   ++scores_per_image[mapping_identifier_image_to_score.at(identifier_reference)].number_of_matches;
                   matched_references.insert(identifier_reference);
                 }
+#ifdef SRRG_MERGE_DESCRIPTORS
               }
+#endif
             }
           }
           break;
@@ -488,7 +492,7 @@ public:
     }
 
     //ds nodes to update after the addition of matchables to leafs
-    std::set<Node*> nodes_to_update;
+    std::set<Node*> leafs_to_update;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
     //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
@@ -505,28 +509,29 @@ public:
       Matchable* matchable_to_insert = _matchables_to_train[index_matchable];
 
       //ds traverse tree to find a leaf for this descriptor
-      Node* node = _root;
-      while (node) {
+      Node* node_current = _root;
+      while (node_current) {
 
         //ds if this node has leaves (is splittable)
-        if (node->has_leafs) {
+        if (node_current->has_leafs) {
 
           //ds check the split bit and go deeper
-          if (matchable_to_insert->descriptor[node->index_split_bit]) {
-            node = node->right;
+          if (matchable_to_insert->descriptor[node_current->index_split_bit]) {
+            node_current = node_current->right;
           } else {
-            node = node->left;
+            node_current = node_current->left;
           }
         } else {
 
 #ifdef SRRG_MERGE_DESCRIPTORS
           //ds check if we can absorb this matchable instead of having to insert it
           bool insertion_required = true;
-          for (const Matchable* matchable_reference: node->matchables) {
+          for (const Matchable* matchable_reference: node_current->matchables) {
             if (matchable_reference->distance(matchable_to_insert) <= maximum_distance_for_merge) {
 
               //ds check if we can still merge this reference
               if (merged_reference_matchables.count(matchable_reference) == 0) {
+                assert(matchable_reference != matchable_to_insert);
                 assert(matchable_to_insert->objects.size() == 1);
                 _merged_matchables[index_mergable].query        = matchable_to_insert;
                 _merged_matchables[index_mergable].reference    = const_cast<Matchable*>(matchable_reference);
@@ -536,9 +541,6 @@ public:
 
                 //ds insertion not required, we will merge
                 insertion_required = false;
-
-                //ds the node needs to be updated since merged matchables still count as multiple matchables for splitting
-                nodes_to_update.insert(node);
               }
               break;
             }
@@ -547,13 +549,15 @@ public:
           //ds if required - place the descriptor into the leaf on the spot
           if (insertion_required) {
 #endif
-            node->matchables.push_back(matchable_to_insert);
-            nodes_to_update.insert(node);
+            node_current->matchables.push_back(matchable_to_insert);
             _matchables_to_train[index_new_matchable] = matchable_to_insert;
             ++index_new_matchable;
 #ifdef SRRG_MERGE_DESCRIPTORS
           }
 #endif
+          //ds leaf needs to be updated, merged or not
+          ++node_current->_number_of_matchables;
+          leafs_to_update.insert(node_current);
           break;
         }
       }
@@ -575,10 +579,9 @@ public:
     }
 #endif
 
-    //ds spawn leaves if requested
-    for (Node* node: nodes_to_update) {
-      if (node->spawnLeafs(train_mode_)) {
-      }
+    //ds check splits for touched leafs
+    for (Node* leaf: leafs_to_update) {
+      leaf->spawnLeafs(train_mode_);
     }
 
     //ds bookkeeping
@@ -618,7 +621,7 @@ public:
 
     //ds prepare node/matchable list to integrate
     _trainables.resize(matchables_.size());
-    std::set<Node*> nodes_to_update;
+    std::set<Node*> leafs_to_update;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
     //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
@@ -665,7 +668,7 @@ public:
 #ifdef SRRG_MERGE_DESCRIPTORS
           //ds if we can merge the query matchable into the reference
           if (matchable_reference && merged_reference_matchables.count(matchable_reference) == 0) {
-            assert(mergable.query->objects.size() == 1);
+            assert(matchable_query->objects.size() == 1);
 
             //ds bookkeep matchable for merge
             _merged_matchables[index_mergable].query        = matchable_query;
@@ -673,9 +676,6 @@ public:
             _merged_matchables[index_mergable].query_object = std::move(matchable_query->_object);
             ++index_mergable;
             merged_reference_matchables.insert(matchable_reference);
-
-            //ds the node needs to be updated since merged matchables still count as multiple matchables for splitting
-            nodes_to_update.insert(node_current);
           } else {
 #endif
 
@@ -688,7 +688,9 @@ public:
           }
 #endif
 
-          //ds done
+          //ds leaf needs to be updated, merged or not
+          ++node_current->_number_of_matchables;
+          leafs_to_update.insert(node_current);
           break;
         }
       }
@@ -699,14 +701,13 @@ public:
 
     //ds merge matchables
     for (MatchableMerge& mergable: _merged_matchables) {
-      if (mergable.reference != mergable.query) {
+      assert(mergable.reference != mergable.query);
 
-        //ds perform merge
-        mergable.reference->mergeSingle(mergable.query);
+      //ds perform merge
+      mergable.reference->mergeSingle(mergable.query);
 
-        //ds free query (!) recall that the tree takes ownership of the matchables
-        delete mergable.query;
-      }
+      //ds free query (!) recall that the tree takes ownership of the matchables
+      delete mergable.query;
     }
 #endif
 
@@ -715,12 +716,11 @@ public:
     uint64_t index_matchable = 0;
     for (const Trainable& trainable: _trainables) {
       trainable.node->matchables.push_back(trainable.matchable);
-      nodes_to_update.insert(trainable.node);
       new_matchables[index_matchable] = trainable.matchable;
       ++index_matchable;
     }
-    for (Node* node: nodes_to_update) {
-      node->spawnLeafs(train_mode_);
+    for (Node* leaf: leafs_to_update) {
+      leaf->spawnLeafs(train_mode_);
     }
 
     //ds insert identifier of the integrated matchables
@@ -822,8 +822,6 @@ protected:
                         const MatchableVector& matchables_reference_,
                         const uint32_t& maximum_distance_matching_,
                         std::map<uint64_t, Match>& best_matches_) const {
-    const uint64_t& identifer_tree_query = matchable_query_->_image_identifier;
-    ObjectType object_query = std::move(matchable_query_->objects.at(identifer_tree_query));
 
     //ds check current descriptors in this node
     for (const Matchable* matchable_reference: matchables_reference_) {
@@ -833,29 +831,25 @@ protected:
 
       //ds if matching distance is within the threshold
       if (distance < maximum_distance_matching_) {
+        const uint64_t& identifer_tree_reference = matchable_reference->_image_identifier;
 
-        //ds for every reference in this matchable
-        for (const ObjectMapElement& object: matchable_reference->objects) {
-          const uint64_t& identifer_tree_reference = object.first;
+        //ds check if there already is a match for this identifier
+        try {
 
-          //ds check if there already is a match for this identifier
-          try {
-
-            //ds update match if current is better
-            if (distance < best_matches_.at(identifer_tree_reference).distance) {
-              best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
-              best_matches_.at(identifer_tree_reference).object_reference    = object.second;
-              best_matches_.at(identifer_tree_reference).distance            = distance;
-            }
-          } catch (const std::out_of_range& /*exception*/) {
-
-            //ds add a new match
-            best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
-                                                                                matchable_reference,
-                                                                                object_query,
-                                                                                object.second,
-                                                                                distance)));
+          //ds update match if current is better
+          if (distance < best_matches_.at(identifer_tree_reference).distance) {
+            best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
+            best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->_object;
+            best_matches_.at(identifer_tree_reference).distance            = distance;
           }
+        } catch (const std::out_of_range& /*exception*/) {
+
+          //ds add a new match
+          best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
+                                                                              matchable_reference,
+                                                                              matchable_query_->_object,
+                                                                              matchable_reference->_object,
+                                                                              distance)));
         }
       }
     }
