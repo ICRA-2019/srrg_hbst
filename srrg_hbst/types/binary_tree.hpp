@@ -494,6 +494,9 @@ public:
     //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
     _merged_matchables.resize(_matchables_to_train.size());
     uint64_t index_mergable = 0;
+
+    //ds currently we allow merging maximally once per reference matchable
+    std::set<const Matchable*> merged_reference_matchables;
 #endif
 
     //ds for each new descriptor - buffering new matchables and merging identical ones
@@ -522,22 +525,20 @@ public:
           for (const Matchable* matchable_reference: node->matchables) {
             if (matchable_reference->distance(matchable_to_insert) <= maximum_distance_for_merge) {
 
-              //ds absorb the matchable on the spot - bare with me
-              Matchable* merging_matchable = const_cast<Matchable*>(matchable_reference);
-
-              //ds avoid merging matchables we just inserted! (TODO implement proper delayed integration in Nodes)
-              if (merging_matchable != matchable_to_insert &&
-                  merging_matchable->_image_identifier != matchable_to_insert->_image_identifier) {
+              //ds check if we can still merge this reference
+              if (merged_reference_matchables.count(matchable_reference) == 0) {
                 assert(matchable_to_insert->objects.size() == 1);
                 _merged_matchables[index_mergable].query        = matchable_to_insert;
-                _merged_matchables[index_mergable].reference    = merging_matchable;
+                _merged_matchables[index_mergable].reference    = const_cast<Matchable*>(matchable_reference);
                 _merged_matchables[index_mergable].query_object = std::move(matchable_to_insert->_object);
-
-                //ds perform merge
-                merging_matchable->mergeSingle(matchable_to_insert);
-                delete matchable_to_insert;
                 ++index_mergable;
+                merged_reference_matchables.insert(matchable_reference);
+
+                //ds insertion not required, we will merge
                 insertion_required = false;
+
+                //ds the node needs to be updated since merged matchables still count as multiple matchables for splitting
+                nodes_to_update.insert(node);
               }
               break;
             }
@@ -560,6 +561,18 @@ public:
     _matchables_to_train.resize(index_new_matchable);
 #ifdef SRRG_MERGE_DESCRIPTORS
     _merged_matchables.resize(index_mergable);
+
+    //ds merge matchables
+    for (MatchableMerge& mergable: _merged_matchables) {
+      if (mergable.reference != mergable.query) {
+
+        //ds perform merge
+        mergable.reference->mergeSingle(mergable.query);
+
+        //ds free query (!) recall that the tree takes ownership of the matchables
+        delete mergable.query;
+      }
+    }
 #endif
 
     //ds spawn leaves if requested
@@ -605,11 +618,12 @@ public:
 
     //ds prepare node/matchable list to integrate
     _trainables.resize(matchables_.size());
+    std::set<Node*> nodes_to_update;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
     //ds matches to merge (descriptor distance == SRRG_MERGE_DESCRIPTORS)
     _merged_matchables.resize(matchables_.size());
-    uint64_t index_mergable  = 0;
+    uint64_t index_mergable = 0;
 
     //ds currently we allow merging maximally once per reference matchable
     std::set<const Matchable*> merged_reference_matchables;
@@ -659,6 +673,9 @@ public:
             _merged_matchables[index_mergable].query_object = std::move(matchable_query->_object);
             ++index_mergable;
             merged_reference_matchables.insert(matchable_reference);
+
+            //ds the node needs to be updated since merged matchables still count as multiple matchables for splitting
+            nodes_to_update.insert(node_current);
           } else {
 #endif
 
@@ -694,7 +711,6 @@ public:
 #endif
 
     //ds integrate new matchables: merge, add and spawn leaves if requested
-    std::set<Node*> nodes_to_update;
     MatchableVector new_matchables(_trainables.size());
     uint64_t index_matchable = 0;
     for (const Trainable& trainable: _trainables) {
