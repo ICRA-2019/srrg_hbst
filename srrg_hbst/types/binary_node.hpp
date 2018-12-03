@@ -190,6 +190,10 @@ public:
       assert(matchables_ones.size() == index_ones);
       assert(matchables_zeros.size() == index_zeros);
 
+      //ds this leaf becomes a regular node and hence does not carry matchables
+      matchables.clear();
+      _number_of_matchables = 0;
+
       //ds if there are elements for leaves
       assert(0 < matchables_ones.size());
       right = new Node(this, depth+1, matchables_ones, bit_mask_previous, train_mode_);
