@@ -24,7 +24,7 @@ public:
   //! @brief descriptor type (extended by augmented bits, no effect if zero)
   typedef std::bitset<descriptor_size_bits_> Descriptor;
   typedef ObjectType_ ObjectType;
-  typedef std::map<uint64_t, ObjectType_> ObjectMap;
+  typedef std::map<uint64_t, ObjectType> ObjectTypeMap;
 
 //ds shared properties
 public:
@@ -159,7 +159,7 @@ public:
   const Descriptor descriptor;
 
   //! @brief a connected object correspondences - when using this field one must ensure the permanence of the referenced object!
-  ObjectMap objects;
+  ObjectTypeMap objects;
 
   //! @brief quick access to the number of contained objects/image_identifiers (default: 1)
   size_t number_of_objects;
