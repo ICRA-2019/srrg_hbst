@@ -92,7 +92,8 @@ public:
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void merge(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
     objects.insert(matchable_->objects.begin(), matchable_->objects.end());
-    number_of_objects = objects.size();
+    number_of_objects += matchable_->objects.size();
+    assert(number_of_objects == objects.size());
   }
 
   //! @brief merges a matchable with THIS matchable (desirable when having to store identical descriptors)
@@ -100,7 +101,8 @@ public:
   //! @param[in] matchable_ the matchable to merge with THIS
   inline void mergeSingle(const BinaryMatchable<ObjectType_, descriptor_size_bits_>* matchable_) {
     objects.insert(std::make_pair(matchable_->_image_identifier, std::move(matchable_->_object)));
-    number_of_objects = objects.size();
+    ++number_of_objects;
+    assert(number_of_objects == objects.size());
   }
 
   //! @brief enables manual update of the inner linked object
@@ -176,6 +178,7 @@ protected:
   //! @brief allow direct access for processing classes
   template<typename BinaryNodeType_>
   friend class BinaryTree;
+
 };
 
 template<typename ObjectType_>
@@ -184,4 +187,5 @@ template<typename ObjectType_>
 using BinaryMatchable256 = BinaryMatchable<ObjectType_, 256>;
 template<typename ObjectType_>
 using BinaryMatchable512 = BinaryMatchable<ObjectType_, 512>;
+
 }

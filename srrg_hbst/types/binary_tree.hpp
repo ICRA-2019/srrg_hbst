@@ -849,14 +849,32 @@ protected:
           for (const ObjectMapElement& object: matchable_reference->objects) {
             const uint64_t& identifer_tree_reference = object.first;
 
-            //ds check if there already is a match for this identifier
             try {
 
-              //ds update match if current is better
-              if (distance < best_matches_.at(identifer_tree_reference).distance) {
-                best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
-                best_matches_.at(identifer_tree_reference).object_reference    = object.second;
-                best_matches_.at(identifer_tree_reference).distance            = distance;
+              //ds update match if current is better than the current best - will jump to addition if no best is available
+              Match& best_match_so_far              = best_matches_.at(identifer_tree_reference);
+              const real_type& best_distance_so_far = best_match_so_far.distance;
+              assert(best_distance_so_far >= 0);
+              if (distance < best_distance_so_far) {
+                assert(best_match_so_far.matchable_references.size() >= 1);
+                assert(best_match_so_far.object_references.size() >= 1);
+
+                //ds replace the best with this match on the spot - we don't have to update the query information
+                best_match_so_far.matchable_references = std::move(std::vector<const Matchable*>(1, matchable_reference));
+                best_match_so_far.object_references    = std::move(std::vector<ObjectType>(1, object.second));
+                best_match_so_far.distance             = distance;
+                assert(best_match_so_far.matchable_references.size() == 1);
+                assert(best_match_so_far.object_references.size() == 1);
+              }
+
+              //ds if the match is equal to the last (multiple candidates)
+              else if (distance == best_distance_so_far) {
+
+                //ds add the candidate - we don't have to update the distance since its the same as the best
+                best_match_so_far.matchable_references.push_back(matchable_reference);
+                best_match_so_far.object_references.push_back(object.second);
+                assert(best_match_so_far.matchable_references.size() > 1);
+                assert(best_match_so_far.object_references.size() > 1);
               }
             } catch (const std::out_of_range& /*exception*/) {
 
@@ -898,14 +916,32 @@ protected:
         for (const ObjectMapElement& object: matchable_reference->objects) {
           const uint64_t& identifer_tree_reference = object.first;
 
-          //ds check if there already is a match for this identifier
           try {
 
-            //ds update match if current is better
-            if (distance < best_matches_.at(identifer_tree_reference).distance) {
-              best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
-              best_matches_.at(identifer_tree_reference).object_reference    = object.second;
-              best_matches_.at(identifer_tree_reference).distance            = distance;
+            //ds update match if current is better than the current best - will jump to addition if no best is available
+            Match& best_match_so_far              = best_matches_.at(identifer_tree_reference);
+            const real_type& best_distance_so_far = best_match_so_far.distance;
+            assert(best_distance_so_far >= 0);
+            if (distance < best_distance_so_far) {
+              assert(best_match_so_far.matchable_references.size() >= 1);
+              assert(best_match_so_far.object_references.size() >= 1);
+
+              //ds replace the best with this match on the spot - we don't have to update the query information
+              best_match_so_far.matchable_references = std::move(std::vector<const Matchable*>(1, matchable_reference));
+              best_match_so_far.object_references    = std::move(std::vector<ObjectType>(1, object.second));
+              best_match_so_far.distance             = distance;
+              assert(best_match_so_far.matchable_references.size() == 1);
+              assert(best_match_so_far.object_references.size() == 1);
+            }
+
+            //ds if the match is equal to the last (multiple candidates)
+            else if (distance == best_distance_so_far) {
+
+              //ds add the candidate - we don't have to update the distance since its the same as the best
+              best_match_so_far.matchable_references.push_back(matchable_reference);
+              best_match_so_far.object_references.push_back(object.second);
+              assert(best_match_so_far.matchable_references.size() > 1);
+              assert(best_match_so_far.object_references.size() > 1);
             }
           } catch (const std::out_of_range& /*exception*/) {
 
@@ -938,6 +974,7 @@ protected:
                           const MatchableVector& matchables_reference_,
                           const uint32_t& maximum_distance_matching_,
                           std::map<uint64_t, Match>& best_matches_) const {
+      ObjectType object_query = std::move(matchable_query_->objects.at(matchable_query_->_image_identifier));
 
       //ds check current descriptors in this node
       for (const Matchable* matchable_reference: matchables_reference_) {
@@ -948,23 +985,42 @@ protected:
         //ds if matching distance is within the threshold
         if (distance < maximum_distance_matching_) {
           const uint64_t& identifer_tree_reference = matchable_reference->_image_identifier;
+          ObjectType object_reference = std::move(matchable_reference->objects.at(identifer_tree_reference));
 
-          //ds check if there already is a match for this identifier
           try {
 
-            //ds update match if current is better
-            if (distance < best_matches_.at(identifer_tree_reference).distance) {
-              best_matches_.at(identifer_tree_reference).matchable_reference = matchable_reference;
-              best_matches_.at(identifer_tree_reference).object_reference    = matchable_reference->_object;
-              best_matches_.at(identifer_tree_reference).distance            = distance;
+            //ds update match if current is better than the current best - will jump to addition if no best is available
+            Match& best_match_so_far              = best_matches_.at(identifer_tree_reference);
+            const real_type& best_distance_so_far = best_match_so_far.distance;
+            assert(best_distance_so_far >= 0);
+            if (distance < best_distance_so_far) {
+              assert(best_match_so_far.matchable_references.size() >= 1);
+              assert(best_match_so_far.object_references.size() >= 1);
+
+              //ds replace the best with this match on the spot - we don't have to update the query information
+              best_match_so_far.matchable_references = std::move(std::vector<const Matchable*>(1, matchable_reference));
+              best_match_so_far.object_references    = std::move(std::vector<ObjectType>(1, object_reference));
+              best_match_so_far.distance             = distance;
+              assert(best_match_so_far.matchable_references.size() == 1);
+              assert(best_match_so_far.object_references.size() == 1);
+            }
+
+            //ds if the match is equal to the last (multiple candidates)
+            else if (distance == best_distance_so_far) {
+
+              //ds add the candidate - we don't have to update the distance since its the same as the best
+              best_match_so_far.matchable_references.push_back(matchable_reference);
+              best_match_so_far.object_references.push_back(object_reference);
+              assert(best_match_so_far.matchable_references.size() > 1);
+              assert(best_match_so_far.object_references.size() > 1);
             }
           } catch (const std::out_of_range& /*exception*/) {
 
             //ds add a new match
             best_matches_.insert(std::make_pair(identifer_tree_reference, Match(matchable_query_,
                                                                                 matchable_reference,
-                                                                                matchable_query_->_object,
-                                                                                matchable_reference->_object,
+                                                                                object_query,
+                                                                                object_reference,
                                                                                 distance)));
           }
         }

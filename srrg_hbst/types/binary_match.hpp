@@ -16,7 +16,6 @@ struct BinaryMatch {
   //! @brief default constructor for an uninitialized match
   //! @returns an uninitialized match
   BinaryMatch(): matchable_query(nullptr),
-                 matchable_reference(nullptr),
                  distance(0) {}
 
   //! @brief default constructor for an uninitialized match
@@ -26,18 +25,19 @@ struct BinaryMatch {
               ObjectType pointer_query_,
               ObjectType pointer_reference_,
               const real_type_& distance_): matchable_query(matchable_query_),
-                                            matchable_reference(matchable_reference_),
                                             object_query(pointer_query_),
-                                            object_reference(pointer_reference_),
-                                            distance(distance_) {}
+                                            distance(distance_) {
+    matchable_references.push_back(matchable_reference_);
+    object_references.push_back(std::move(pointer_reference_));
+  }
 
   //! @brief copy constructor
   //! @param[in] match_ binary match object to be copied from
   //! @returns a binary match copy of the match_
   BinaryMatch(const BinaryMatch& match_): matchable_query(match_.matchable_query),
-                                          matchable_reference(match_.matchable_reference),
-                                          object_query(match_.object_query),
-                                          object_reference(match_.object_reference),
+                                          matchable_references(std::move(match_.matchable_references)),
+                                          object_query(std::move(match_.object_query)),
+                                          object_references(std::move(match_.object_references)),
                                           distance(match_.distance) {}
 
   //! @brief default destructor: nothing to do
@@ -48,9 +48,9 @@ struct BinaryMatch {
 
   //! @brief attributes
   const Matchable* matchable_query;
-  const Matchable* matchable_reference;
+  std::vector<const Matchable*> matchable_references; //ds multiple references are possible for identical matching distance
   ObjectType object_query;
-  ObjectType object_reference;
+  std::vector<ObjectType> object_references; //ds multiple references are possible for identical matching distance
   real_type distance;
 };
 }
