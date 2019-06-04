@@ -77,6 +77,7 @@ namespace srrg_hbst {
       identifier(identifier_),
       _root(new Node(matchables_, train_mode_)) {
       _matchables.clear();
+      _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
       _matchables_to_train.clear();
       _added_identifiers_train.clear();
       _added_identifiers_train.insert(identifier);
@@ -100,6 +101,7 @@ namespace srrg_hbst {
       identifier(identifier_),
       _root(new Node(matchables_, bit_mask_, train_mode_)) {
       _matchables.clear();
+      _matchables.insert(_matchables.end(), matchables_.begin(), matchables_.end());
       _matchables_to_train.clear();
       _added_identifiers_train.clear();
       _added_identifiers_train.insert(identifier);
@@ -109,8 +111,8 @@ namespace srrg_hbst {
 #endif
     }
 
-    // ds free all nodes in the tree
-    virtual ~BinaryTree() {
+    // ds free all nodes in the tree without freeing the matchables - call clear(true)
+    ~BinaryTree() {
       clear();
     }
 
@@ -155,8 +157,6 @@ namespace srrg_hbst {
              matchables_query_.size();
     }
 
-    // ds access
-  public:
     //! @brief returns database size (i.e. the number of added images/matchable vectors with unique
     //! identifiers)
     //! @returns number of added reference matchable vectors
@@ -316,9 +316,9 @@ namespace srrg_hbst {
     }
 
     // ds direct matching function on this tree
-    virtual void matchLazy(const MatchableVector& matchables_query_,
-                           MatchVector& matches_,
-                           const uint32_t& maximum_distance_ = 25) const {
+    void matchLazy(const MatchableVector& matchables_query_,
+                   MatchVector& matches_,
+                   const uint32_t& maximum_distance_ = 25) const {
       if (matchables_query_.empty()) {
         return;
       }
@@ -356,9 +356,9 @@ namespace srrg_hbst {
     }
 
     // ds direct matching function on this tree
-    virtual void match(const MatchableVector& matchables_query_,
-                       MatchVector& matches_,
-                       const uint32_t& maximum_distance_ = 25) const {
+    void match(const MatchableVector& matchables_query_,
+               MatchVector& matches_,
+               const uint32_t& maximum_distance_ = 25) const {
       if (matchables_query_.empty()) {
         return;
       }
@@ -419,9 +419,9 @@ namespace srrg_hbst {
     //! @param[out] matches_ output matching results: contains all available matches for all
     //! training images added to the tree
     //! @param[in] maximum_distance_ the maximum distance allowed for a positive match response
-    virtual void match(const MatchableVector& matchables_query_,
-                       MatchVectorMap& matches_,
-                       const uint32_t& maximum_distance_matching_ = 25) const {
+    void match(const MatchableVector& matchables_query_,
+               MatchVectorMap& matches_,
+               const uint32_t& maximum_distance_matching_ = 25) const {
       if (matchables_query_.empty() || _added_identifiers_train.empty()) {
         return;
       }
@@ -485,7 +485,7 @@ namespace srrg_hbst {
 
     //! @brief train tree with current _trainable_matchables according to selected mode
     //! @param[in] train_mode_ desired training mode
-    virtual void train(const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+    void train(const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
       if (_matchables_to_train.empty() || train_mode_ == SplittingStrategy::DoNothing) {
         return;
       }
@@ -493,7 +493,8 @@ namespace srrg_hbst {
       // ds check if we have to build an initial tree first (no training afterwards)
       if (!_root) {
         _root = new Node(_matchables_to_train, train_mode_);
-        _matchables.insert(_matchables.end(), _root->matchables.begin(), _root->matchables.end());
+        _matchables.insert(
+          _matchables.end(), _matchables_to_train.begin(), _matchables_to_train.end());
         _matchables_to_train.clear();
         return;
       }
@@ -622,10 +623,10 @@ namespace srrg_hbst {
     //! training images added to the tree
     //! @param[in] maximum_distance_matching_ the maximum distance allowed for a positive match
     //! response
-    virtual void matchAndAdd(const MatchableVector& matchables_,
-                             MatchVectorMap& matches_,
-                             const uint32_t maximum_distance_matching_ = 25,
-                             const SplittingStrategy& train_mode_ = SplittingStrategy::SplitEven) {
+    void matchAndAdd(const MatchableVector& matchables_,
+                     MatchVectorMap& matches_,
+                     const uint32_t maximum_distance_matching_ = 25,
+                     const SplittingStrategy& train_mode_      = SplittingStrategy::SplitEven) {
       if (matchables_.empty()) {
         return;
       }
@@ -777,7 +778,7 @@ namespace srrg_hbst {
 #endif
 
     //! @brief clears complete structure (corresponds to empty construction)
-    virtual void clear(const bool& delete_matchables_ = true) {
+    void clear(const bool& delete_matchables_ = true) {
       // ds internal bookkeeping
       _added_identifiers_train.clear();
       _trainables.clear();
@@ -795,7 +796,7 @@ namespace srrg_hbst {
     }
 
     //! @brief free all matchables contained in the tree (destructor)
-    virtual void deleteMatchables() {
+    void deleteMatchables() {
       for (const Matchable* matchable : _matchables) {
         delete matchable;
       }
