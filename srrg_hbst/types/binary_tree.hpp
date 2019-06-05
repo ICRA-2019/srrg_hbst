@@ -25,8 +25,6 @@ namespace srrg_hbst {
 #ifdef SRRG_MERGE_DESCRIPTORS
     //! @brief component object used for matchable merging
     struct MatchableMerge {
-      MatchableMerge() : query(nullptr), reference(nullptr) {
-      }
       MatchableMerge(const Matchable* query_, ObjectType query_object_, Matchable* reference_) :
         query(query_),
         query_object(query_object_),
@@ -162,6 +160,21 @@ namespace srrg_hbst {
     //! @returns number of added reference matchable vectors
     const size_t size() const {
       return _added_identifiers_train.size();
+    }
+
+    //! @brief const accessor to root node
+    const Node* root() const {
+      return _root;
+    }
+
+    //! number of merged matchables in last call
+    const size_t numberOfMergedMatchablesLastTraining() const {
+#ifdef SRRG_MERGE_DESCRIPTORS
+      return _number_of_merged_matchables_last_training;
+#else
+      // ds always zero if not enabled
+      return 0;
+#endif
     }
 
 #ifdef SRRG_MERGE_DESCRIPTORS
@@ -474,12 +487,13 @@ namespace srrg_hbst {
         return;
       }
 
-      // ds store arguments
+      // ds prepare bookkeeping for training
+      assert(matchables_.front()->_image_identifier == matchables_.back()->_image_identifier);
       _added_identifiers_train.insert(matchables_.front()->_image_identifier);
       _matchables_to_train.insert(
         _matchables_to_train.end(), matchables_.begin(), matchables_.end());
 
-      // ds train based on set matchables (no effect for do nothing train mode)
+      // ds train based on set matchables (no effect for do SplittingStrategy::DoNothing)
       train(train_mode_);
     }
 
@@ -489,6 +503,7 @@ namespace srrg_hbst {
       if (_matchables_to_train.empty() || train_mode_ == SplittingStrategy::DoNothing) {
         return;
       }
+      _number_of_matches_to_train += _matchables_to_train.size();
 
       // ds check if we have to build an initial tree first (no training afterwards)
       if (!_root) {
@@ -782,6 +797,8 @@ namespace srrg_hbst {
       // ds internal bookkeeping
       _added_identifiers_train.clear();
       _trainables.clear();
+      _number_of_matches_to_train                = 0;
+      _number_of_merged_matchables_last_training = 0;
 
       // ds recursively delete all nodes
       delete _root;
@@ -805,38 +822,103 @@ namespace srrg_hbst {
       }
     }
 
-    //! @brief recursively counts all leafs and descriptors stored in the tree (expensive)
-    //! @param[out] number_of_leafs_
-    //! @param[out] number_of_matchables_
-    //! @param[out] maximum_depth_
-    //! @param[in] starting node (only subtree will be evaluated)
-    void count(uint64_t& number_of_leafs_,
-               uint64_t& number_of_matchables_,
-               std::vector<uint32_t>& leaf_depths_,
-               Node* node_ = 0) {
-      // ds call on empty tree
-      if (_root == nullptr) {
-        number_of_leafs_      = 0;
-        number_of_matchables_ = 0;
-        return;
+    // ds save complete database to disk
+    bool write(const std::string& file_path) {
+      // ds open file (overwriting existing)
+      std::ofstream outfile(file_path, std::ios::out);
+      if (!outfile.is_open()) {
+        std::cerr << "BinaryTree::write|ERROR: unable to open file: " << file_path << std::endl;
+        return false;
+      }
+      if (!outfile.good()) {
+        return false;
+        std::cerr << "BinaryTree::write|ERROR: file is not valid: " << file_path << std::endl;
       }
 
-      // ds start from root if not specified otherwise
-      if (node_ == nullptr) {
-        node_ = _root;
+      // ds header information
+      outfile << "# database identifier: " << identifier << std::endl;
+      outfile << "# descriptor bit size: " << Matchable::descriptor_size_bits << std::endl;
+      outfile << "# descriptor encoding: " << Matchable::descriptor_size_in_chunks_utf_8 << " x "
+              << Matchable::chunk_size_bits_utf_8 << " bit chunks" << std::endl;
+      outfile << "# number of stored descriptors: " << _number_of_matches_to_train << std::endl;
+      outfile << "# number of matchables: " << _matchables.size() << std::endl;
+      outfile << "# compression: "
+              << static_cast<real_type>(_matchables.size()) / _number_of_matches_to_train
+              << std::endl;
+      outfile << "# number of training entries: " << _added_identifiers_train.size() << std::endl;
+      outfile << "# training entries: ";
+      for (const uint64_t& identifier_train : _added_identifiers_train) {
+        outfile << identifier_train << " ";
+      }
+      outfile << std::endl;
+#ifdef SRRG_MERGE_DESCRIPTORS
+      outfile << "# SRRG_MERGE_DESCRIPTORS enabled" << std::endl;
+#endif
+      outfile << std::endl;
+
+      // ds traverse complete tree to obtain leaf information
+      uint64_t number_of_leafs      = 0;
+      uint64_t number_of_matchables = 0;
+      std::vector<const Node*> leafs;
+      _getLeafs(_root, number_of_leafs, number_of_matchables, leafs);
+      assert(number_of_matchables == _matchables.size());
+
+      // ds compute mean depth and standard deviation
+      real_type depth_sum = 0;
+      for (const Node* leaf : leafs) {
+        depth_sum += leaf->depth;
+      }
+      const real_type depth_mean = depth_sum / number_of_leafs;
+      real_type depth_deviation  = 0;
+      for (const Node* leaf : leafs) {
+        const real_type deviation = (leaf->depth - depth_mean);
+        depth_deviation += deviation * deviation;
+      }
+      depth_deviation = std::sqrt(depth_deviation / number_of_leafs);
+
+      // ds leaf information (nodes are defined by traversal that is stored in each leafs mask)
+      outfile << "# number of leafs: " << number_of_leafs << std::endl;
+      outfile << "# mean depth: " << depth_mean << std::endl;
+      outfile << "# standard deviation depth: " << depth_deviation << std::endl;
+      outfile << std::endl;
+      outfile << "# leaf data: [traversal indices as CSV] [depth] [number of matchables] [1st "
+                 "matchable as UTF-8][2nd matchable as UTF-8].. "
+              << std::endl;
+      if (Matchable::descriptor_size_bits % Matchable::chunk_size_bits_utf_8 != 0) {
+        std::cerr << "BinaryTree::write|ERROR: invalid descriptor bit size for serialization"
+                  << std::endl;
+        outfile.clear();
+        outfile.close();
+        return false;
+      }
+      for (const Node* leaf : leafs) {
+        // ds compute traversal starting from leaf TODO move to Node class
+        std::vector<uint32_t> traversed_bit_indices;
+        traversed_bit_indices.reserve(Matchable::descriptor_size_bits);
+        const Node* node = leaf->parent;
+        while (node) {
+          traversed_bit_indices.emplace_back(node->index_split_bit);
+          node = node->parent;
+        }
+
+        // ds stream indices in reverse order (starting from root)
+        for (auto it = traversed_bit_indices.rbegin(); it != traversed_bit_indices.rend(); ++it) {
+          outfile << *it << ",";
+        }
+
+        // ds add additional info TODO move to Node class
+        outfile << " " << leaf->depth << " " << leaf->_number_of_matchables << " ";
+
+        // ds stream matchable data as binary chunks
+        for (const Matchable* matchable : leaf->matchables) {
+          matchable->writeUTF8(outfile);
+        }
+        outfile << std::endl;
       }
 
-      // ds if we are in a leaf
-      if (!node_->left) {
-        // ds update statistics and terminate
-        ++number_of_leafs_;
-        number_of_matchables_ += node_->matchables.size();
-        leaf_depths_.push_back(node_->depth);
-      } else {
-        // ds look deeper on left and right subtree
-        count(number_of_leafs_, number_of_matchables_, leaf_depths_, node_->left);
-        count(number_of_leafs_, number_of_matchables_, leaf_depths_, node_->right);
-      }
+      // ds done
+      outfile.close();
+      return true;
     }
 
     // ds helpers
@@ -1048,23 +1130,46 @@ namespace srrg_hbst {
     }
 #endif
 
-    // ds accessible attributes
+    //! @brief recursively counts all leafs and descriptors stored in the tree (expensive)
+    //! @param[in] starting node (only subtree will be evaluated)
+    //! @param[out] number_of_leafs_
+    //! @param[out] number_of_matchables_
+    //! @param[out] leafs_
+    void _getLeafs(Node* node_,
+                   uint64_t& number_of_leafs_,
+                   uint64_t& number_of_matchables_,
+                   std::vector<const Node*>& leafs_) {
+      // ds handle call on empty tree without node_ == _root
+      if (_root == nullptr) {
+        number_of_leafs_      = 0;
+        number_of_matchables_ = 0;
+        leafs_.clear();
+        return;
+      }
+
+      // ds if we are in a node (that has leafs)
+      if (node_->has_leafs) {
+        assert(node_->right);
+        assert(node_->left);
+
+        // ds look deeper on left and right subtree
+        _getLeafs(node_->left, number_of_leafs_, number_of_matchables_, leafs_);
+        _getLeafs(node_->right, number_of_leafs_, number_of_matchables_, leafs_);
+
+      } else {
+        // ds we reached a leaf
+        assert(!node_->right);
+        assert(!node_->left);
+
+        // ds update statistics and terminate recursion
+        ++number_of_leafs_;
+        number_of_matchables_ += node_->matchables.size();
+        leafs_.push_back(node_);
+      }
+    }
+
+    // ds public attributes
   public:
-    //! @brief const accessor to root node
-    const Node* root() const {
-      return _root;
-    }
-
-    //! number of merged matchables in last call
-    const size_t numberOfMergedMatchablesLastTraining() const {
-#ifdef SRRG_MERGE_DESCRIPTORS
-      return _number_of_merged_matchables_last_training;
-#else
-      // ds always zero if not enabled
-      return 0;
-#endif
-    }
-
 #ifdef SRRG_MERGE_DESCRIPTORS
     //! @brief maximum allowed descriptor distance for merging two descriptors
     static uint32_t maximum_distance_for_merge;
@@ -1077,6 +1182,9 @@ namespace srrg_hbst {
 
     //! @brief root node (e.g. starting point for similarity search)
     Node* _root = nullptr;
+
+    //! @brief raw number of queried matchables to add (before training and merging)
+    uint64_t _number_of_matches_to_train = 0;
 
     //! @brief bookkeeping: all matchables contained in the tree
     MatchableVector _matchables;

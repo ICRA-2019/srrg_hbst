@@ -154,9 +154,6 @@ namespace srrg_hbst {
 
       // ds if best was found and the partitioning is sufficient (0 to 0.5) - we can spawn leaves
       if (index_split_bit != -1 && partitioning < maximum_partitioning) {
-        // ds enabled
-        has_leafs = true;
-
         // ds get a mask copy
         Descriptor bit_mask_previous(bit_mask);
 
@@ -184,6 +181,7 @@ namespace srrg_hbst {
         assert(matchables_zeros.size() == index_zeros);
 
         // ds this leaf becomes a regular node and hence does not carry matchables
+        has_leafs = true;
         matchables.clear();
         _number_of_matchables = 0;
 
