@@ -13,7 +13,7 @@ namespace srrg_hbst {
     // ds readability
     using Node = BinaryNode<BinaryMatchableType_, real_type_>;
 
-    // ds template forwarding
+    // ds exports
   public:
     typedef Node BaseNode;
     typedef BinaryMatchableType_ Matchable;
@@ -21,6 +21,22 @@ namespace srrg_hbst {
     typedef typename Matchable::Descriptor Descriptor;
     typedef real_type_ real_type;
     typedef BinaryMatch<Matchable, real_type> Match;
+
+    //! @brief header for de/serialization TODO fuse with attributes
+    struct Header {
+      Header() :
+        depth(0),
+        index_split_bit(0),
+        has_leafs(false),
+        number_of_matchables_uncompressed(0),
+        number_of_matchables_compressed(0) {
+      }
+      uint64_t depth;
+      int32_t index_split_bit;
+      bool has_leafs;
+      uint64_t number_of_matchables_uncompressed;
+      uint64_t number_of_matchables_compressed;
+    };
 
     // ds ctor/dtor
   public:
@@ -303,6 +319,9 @@ namespace srrg_hbst {
 
     // ds fields
   protected:
+    //! @brief serializable header carrying core attributes
+    Header _header;
+
     //! @brief matchables contained in this node
     MatchableVector matchables;
 

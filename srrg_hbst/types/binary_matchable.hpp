@@ -41,13 +41,6 @@ namespace srrg_hbst {
     static constexpr uint32_t descriptor_size_bits_overflow =
       descriptor_size_bits - descriptor_size_bits_in_bytes;
 
-    //! @brief size of a descriptor chunk as UTF-8 character (1 byte)
-    static constexpr uint32_t chunk_size_bits_utf_8 = 8;
-
-    //! @brief number of 4 byte (UTF-8 character) chunks needed for storing the descriptor
-    static constexpr uint32_t descriptor_size_in_chunks_utf_8 =
-      descriptor_size_bits / chunk_size_bits_utf_8;
-
     // ds ctor/dtor
   public:
     //! @brief default constructor: DISABLED
@@ -132,43 +125,6 @@ namespace srrg_hbst {
       for (auto& object : objects) {
         object.second = std::move(object_);
       }
-    }
-
-    //! @brief writes any descriptor's bitstring to stream as UTF-8 chunks
-    static void writeUTF8(const Descriptor& descriptor_, std::ofstream& stream_) {
-      if (descriptor_size_bits % chunk_size_bits_utf_8 > 0) {
-        std::cerr << "BinaryMatchable::writeUTF8|ERROR: invalid descriptor bit size for "
-                     "serialization, call ignored"
-                  << std::endl;
-        return;
-      }
-
-      // ds cache
-      const std::string bitstring = descriptor_.to_string();
-
-      // ds split bitstring into 4-byte chunks (uchars) to handle arbitrary descriptor lengths
-      std::vector<uchar> chunks(descriptor_size_in_chunks_utf_8);
-      size_t chunk_index = 0;
-      for (size_t i = 0; i < descriptor_size_bits; ++i) {
-        const size_t bit_index_begin = chunk_index * chunk_size_bits_utf_8;
-        const size_t bit_index_end   = (chunk_index + 1) * chunk_size_bits_utf_8 - 1;
-        if (i >= bit_index_end) {
-          chunks[chunk_index] = std::bitset<chunk_size_bits_utf_8>(
-                                  bitstring.substr(bit_index_begin, chunk_size_bits_utf_8))
-                                  .to_ulong();
-          ++chunk_index;
-        }
-      }
-
-      // ds write to stream
-      for (size_t i = 0; i < descriptor_size_in_chunks_utf_8; ++i) {
-        stream_ << chunks[i];
-      }
-    }
-
-    //! @brief writes this descriptor's bitstring to stream as UTF-8 chunks
-    void writeUTF8(std::ofstream& stream_) const {
-      writeUTF8(descriptor, stream_);
     }
 
 #ifdef SRRG_HBST_HAS_OPENCV
