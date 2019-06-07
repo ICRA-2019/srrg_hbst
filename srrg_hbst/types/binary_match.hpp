@@ -9,9 +9,9 @@ namespace srrg_hbst {
   //! @param real_precision_ matching distance precision
   template <typename BinaryMatchableType_, typename real_type_ = double>
   struct BinaryMatch {
-    typedef BinaryMatchableType_ Matchable;
-    typedef typename Matchable::ObjectType ObjectType;
-    typedef real_type_ real_type;
+    using Matchable  = BinaryMatchableType_;
+    using ObjectType = typename Matchable::ObjectType;
+    using real_type  = real_type_;
 
     //! @brief default constructor for an uninitialized match
     //! @returns an uninitialized match

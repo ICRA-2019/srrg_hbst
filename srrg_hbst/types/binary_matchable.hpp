@@ -17,12 +17,12 @@ namespace srrg_hbst {
   //! @param descriptor_size_bits_ number of bits for the native descriptor
   template <typename ObjectType_, uint32_t descriptor_size_bits_ = 256>
   class BinaryMatchable {
-    // ds template forwarding
+    // ds exports
   public:
     //! @brief descriptor type (extended by augmented bits, no effect if zero)
-    typedef std::bitset<descriptor_size_bits_> Descriptor;
-    typedef ObjectType_ ObjectType;
-    typedef std::map<uint64_t, ObjectType> ObjectTypeMap;
+    using Descriptor = std::bitset<descriptor_size_bits_>;
+    using ObjectType = ObjectType_;
+    using ObjectMap  = std::map<uint64_t, ObjectType>;
 
     // ds shared properties
   public:
@@ -60,6 +60,17 @@ namespace srrg_hbst {
       _image_identifier(image_identifier_),
       _object(std::move(object_)) {
       objects.insert(std::make_pair(_image_identifier, _object));
+      assert(number_of_objects == objects.size());
+    }
+
+    //! @brief constructor from object map
+    BinaryMatchable(ObjectMap objects_, const Descriptor& descriptor_) :
+      descriptor(descriptor_),
+      number_of_objects(objects_.size()),
+      objects(objects_),
+      _image_identifier(objects_.begin()->first),
+      _object(objects_.begin()->second) {
+      assert(number_of_objects == objects.size());
     }
 
 // ds wrapped constructors - only available if OpenCV is present on building system
@@ -93,6 +104,7 @@ namespace srrg_hbst {
       return (matchable_query_->descriptor ^ this->descriptor).count();
     }
 
+#ifdef SRRG_MERGE_DESCRIPTORS
     //! @brief merges a matchable with THIS matchable (desirable when having to store identical
     //! descriptors)
     //! @param[in] matchable_ the matchable to merge with THIS
@@ -112,6 +124,7 @@ namespace srrg_hbst {
       ++number_of_objects;
       assert(number_of_objects == objects.size());
     }
+#endif
 
     //! @brief enables manual update of the inner linked object
     inline void setObject(ObjectType object_) {
@@ -128,7 +141,6 @@ namespace srrg_hbst {
     }
 
 #ifdef SRRG_HBST_HAS_OPENCV
-
     //! @brief descriptor wrapping - only available if OpenCV is present on building system
     //! @param[in] descriptor_cv_ opencv descriptor to convert into HBST format
     static inline Descriptor getDescriptor(const cv::Mat& descriptor_cv_) {
@@ -161,7 +173,6 @@ namespace srrg_hbst {
       }
       return binary_descriptor;
     }
-
 #endif
 
     // ds attributes
@@ -171,14 +182,14 @@ namespace srrg_hbst {
 
     //! @brief a connected object correspondences - when using this field one must ensure the
     //! permanence of the referenced object!
-    ObjectTypeMap objects;
+    ObjectMap objects;
 
     //! @brief quick access to the number of contained objects/image_identifiers (default: 1)
-    size_t number_of_objects;
+    uint64_t number_of_objects;
 
     // ds fast access (for a matchable with only single values, internal only)
   protected:
-    //! @brief single value access only: rlinked object to group of descriptors (e.g. an image or
+    //! @brief single value access only: linked object to group of descriptors (e.g. an image or
     //! image index)
     const uint64_t _image_identifier;
 
@@ -189,6 +200,18 @@ namespace srrg_hbst {
     template <typename BinaryNodeType_>
     friend class BinaryTree;
   };
+
+  // ds come on c++11
+  template <typename ObjectType_, uint32_t descriptor_size_bits_>
+  constexpr uint32_t BinaryMatchable<ObjectType_, descriptor_size_bits_>::descriptor_size_bits;
+  template <typename ObjectType_, uint32_t descriptor_size_bits_>
+  constexpr uint32_t BinaryMatchable<ObjectType_, descriptor_size_bits_>::raw_descriptor_size_bytes;
+  template <typename ObjectType_, uint32_t descriptor_size_bits_>
+  constexpr uint32_t
+    BinaryMatchable<ObjectType_, descriptor_size_bits_>::descriptor_size_bits_in_bytes;
+  template <typename ObjectType_, uint32_t descriptor_size_bits_>
+  constexpr uint32_t
+    BinaryMatchable<ObjectType_, descriptor_size_bits_>::descriptor_size_bits_overflow;
 
   template <typename ObjectType_>
   using BinaryMatchable128 = BinaryMatchable<ObjectType_, 128>;

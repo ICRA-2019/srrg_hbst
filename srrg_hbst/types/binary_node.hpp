@@ -15,27 +15,22 @@ namespace srrg_hbst {
 
     // ds exports
   public:
-    typedef Node BaseNode;
-    typedef BinaryMatchableType_ Matchable;
-    typedef std::vector<Matchable*> MatchableVector;
-    typedef typename Matchable::Descriptor Descriptor;
-    typedef real_type_ real_type;
-    typedef BinaryMatch<Matchable, real_type> Match;
+    using BaseNode        = Node;
+    using Matchable       = BinaryMatchableType_;
+    using MatchableVector = std::vector<Matchable*>;
+    using Descriptor      = typename Matchable::Descriptor;
+    using real_type       = real_type_;
+    using Match           = BinaryMatch<Matchable, real_type>;
 
     //! @brief header for de/serialization TODO fuse with attributes
     struct Header {
-      Header() :
-        depth(0),
-        index_split_bit(0),
-        has_leafs(false),
-        number_of_matchables_uncompressed(0),
-        number_of_matchables_compressed(0) {
+      Header(const uint64_t& depth_) : depth(depth_) {
+      }
+      Header() : Header(0) {
       }
       uint64_t depth;
-      int32_t index_split_bit;
-      bool has_leafs;
-      uint64_t number_of_matchables_uncompressed;
-      uint64_t number_of_matchables_compressed;
+      uint64_t number_of_matchables_uncompressed = 0;
+      uint64_t number_of_matchables_compressed   = 0;
     };
 
     // ds ctor/dtor
@@ -70,14 +65,15 @@ namespace srrg_hbst {
     // ds create leafs (external use intented)
     virtual const bool spawnLeafs(const SplittingStrategy& train_mode_) {
       assert(!has_leafs);
+      _header.number_of_matchables_compressed = matchables.size();
 
       // ds exit if maximum depth is reached
-      if (depth == maximum_depth) {
+      if (_header.depth == maximum_depth) {
         return false;
       }
 
       // ds exit if we have insufficient data
-      if (_number_of_matchables < maximum_leaf_size) {
+      if (_header.number_of_matchables_uncompressed < maximum_leaf_size) {
         return false;
       }
 
@@ -199,14 +195,14 @@ namespace srrg_hbst {
         // ds this leaf becomes a regular node and hence does not carry matchables
         has_leafs = true;
         matchables.clear();
-        _number_of_matchables = 0;
+        _header.number_of_matchables_compressed = 0;
 
         // ds if there are elements for leaves
         assert(0 < matchables_ones.size());
-        right = new Node(this, depth + 1, matchables_ones, bit_mask_previous, train_mode_);
+        right = new Node(this, _header.depth + 1, matchables_ones, bit_mask_previous, train_mode_);
 
         assert(0 < matchables_zeros.size());
-        left = new Node(this, depth + 1, matchables_zeros, bit_mask_previous, train_mode_);
+        left = new Node(this, _header.depth + 1, matchables_zeros, bit_mask_previous, train_mode_);
 
         // ds success
         return true;
@@ -222,7 +218,7 @@ namespace srrg_hbst {
       return matchables;
     }
     const uint64_t& getDepth() const {
-      return depth;
+      return _header.depth;
     }
     const int32_t& indexSplitBit() const {
       return index_split_bit;
@@ -244,17 +240,17 @@ namespace srrg_hbst {
                const SplittingStrategy& train_mode_) :
       parent(parent_),
       matchables(matchables_),
-      depth(depth_),
+      _header(depth_),
       bit_mask(bit_mask_) {
 #ifdef SRRG_MERGE_DESCRIPTORS
       // ds recompute current number of contained merged matchables TODO make this less horribly
       // wasteful
-      _number_of_matchables = 0;
+      _header.number_of_matchables_uncompressed = 0;
       for (const Matchable* matchable : matchables) {
-        _number_of_matchables += matchable->number_of_objects;
+        _header.number_of_matchables_uncompressed += matchable->number_of_objects;
       }
 #else
-      _number_of_matchables = matchables.size();
+      _header.number_of_matchables_uncompressed = matchables.size();
 #endif
       spawnLeafs(train_mode_);
     }
@@ -265,8 +261,8 @@ namespace srrg_hbst {
                                        const MatchableVector& matchables_,
                                        uint64_t& number_of_set_bits_total_) const {
       assert(0 < matchables_.size());
-      assert(0 < _number_of_matchables);
-      assert(matchables_.size() <= _number_of_matchables);
+      assert(0 < _header.number_of_matchables_uncompressed);
+      assert(matchables_.size() <= _header.number_of_matchables_uncompressed);
 
       // ds count set bits of all matchables in this node
       uint64_t number_of_set_bits = 0;
@@ -291,10 +287,11 @@ namespace srrg_hbst {
       }
       number_of_set_bits_total_ = number_of_set_bits;
 #endif
-      assert(number_of_set_bits <= _number_of_matchables);
+      assert(number_of_set_bits <= _header.number_of_matchables_uncompressed);
 
       // ds return ratio
-      return (static_cast<real_type>(number_of_set_bits) / _number_of_matchables);
+      return (static_cast<real_type>(number_of_set_bits) /
+              _header.number_of_matchables_uncompressed);
     }
 
     // ds public fields
@@ -325,9 +322,6 @@ namespace srrg_hbst {
     //! @brief matchables contained in this node
     MatchableVector matchables;
 
-    //! @brief depth of this node (number of splits passed)
-    uint64_t depth = 0;
-
     //! @brief the split bit diving potential leafs of this node
     int32_t index_split_bit = -1;
 
@@ -345,10 +339,6 @@ namespace srrg_hbst {
 
     // ds random number generator, used for random splitting (for all nodes)
     static std::mt19937 random_number_generator;
-
-    //! @brief number of matchables contained in this node (counting merged matchables as the number
-    //! of consumed matchables)
-    uint64_t _number_of_matchables = 0;
 
     //! @brief allow direct access for processing classes
     template <typename BinaryNodeType_>

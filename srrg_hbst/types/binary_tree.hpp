@@ -1,5 +1,6 @@
 #pragma once
 #include "binary_node.hpp"
+#include <map>
 #include <memory>
 
 // ds helper macro for controlled reading and writing operations
@@ -15,20 +16,21 @@ namespace srrg_hbst {
   //! @class the binary tree class, consisting of binary nodes holding binary descriptors
   template <typename BinaryNodeType_>
   class BinaryTree {
-    // ds template forwarding
+    // ds exports
   public:
     //! @brief directly exported types (readability)
-    typedef typename BinaryNodeType_::BaseNode Node;
-    typedef typename Node::Matchable Matchable;
-    typedef typename Node::MatchableVector MatchableVector;
-    typedef typename Node::Descriptor Descriptor;
-    typedef typename Node::Match Match;
-    typedef typename Node::real_type real_type;
-    typedef typename Matchable::ObjectType ObjectType;
-    typedef std::pair<uint64_t, ObjectType> ObjectMapElement;
-    typedef std::vector<Match> MatchVector;
-    typedef std::map<uint64_t, std::vector<Match>> MatchVectorMap;
-    typedef std::pair<uint64_t, std::vector<Match>> MatchVectorMapElement;
+    using Node                  = typename BinaryNodeType_::BaseNode;
+    using Matchable             = typename Node::Matchable;
+    using MatchableVector       = typename Node::MatchableVector;
+    using Descriptor            = typename Node::Descriptor;
+    using Match                 = typename Node::Match;
+    using real_type             = typename Node::real_type;
+    using ObjectType            = typename Matchable::ObjectType;
+    using ObjectMap             = typename Matchable::ObjectMap;
+    using ObjectMapElement      = std::pair<uint64_t, ObjectType>;
+    using MatchVector           = std::vector<Match>;
+    using MatchVectorMap        = std::map<uint64_t, std::vector<Match>>;
+    using MatchVectorMapElement = std::pair<uint64_t, std::vector<Match>>;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
     //! @brief component object used for matchable merging
@@ -191,6 +193,10 @@ namespace srrg_hbst {
     const size_t size() const {
       assert(_header.number_of_training_entries == _added_identifiers_train.size());
       return _header.number_of_training_entries;
+    }
+
+    const std::set<uint64_t>& trainedIdentifiers() const {
+      return _added_identifiers_train;
     }
 
     //! @brief returns the number of matchables added for training (before compression)
@@ -572,7 +578,6 @@ namespace srrg_hbst {
       std::set<Node*> leafs_to_update;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
-
       // ds we need delayed insertion as we continuously scan the current references for merging
       _trainables.resize(_matchables_to_train.size());
 
@@ -638,7 +643,7 @@ namespace srrg_hbst {
             ++index_new_matchable;
 #endif
             // ds leaf always needs to be updated, merged or not
-            ++node_current->_number_of_matchables;
+            ++node_current->_header.number_of_matchables_uncompressed;
             leafs_to_update.insert(node_current);
             break;
           }
@@ -785,7 +790,7 @@ namespace srrg_hbst {
 #endif
 
             // ds leaf needs to be updated, merged or not
-            ++node_current->_number_of_matchables;
+            ++node_current->_header.number_of_matchables_uncompressed;
             leafs_to_update.insert(node_current);
             break;
           }
@@ -853,10 +858,12 @@ namespace srrg_hbst {
       // ds clean internal bookkeeping
       _added_identifiers_train.clear();
       _trainables.clear();
-      _header.number_of_matchables_uncompressed  = 0;
-      _header.number_of_matchables_compressed    = 0;
-      _header.number_of_training_entries         = 0;
+      _header.number_of_matchables_uncompressed = 0;
+      _header.number_of_matchables_compressed   = 0;
+      _header.number_of_training_entries        = 0;
+#ifdef SRRG_MERGE_DESCRIPTORS
       _number_of_merged_matchables_last_training = 0;
+#endif
 
       // ds recursively delete all nodes
       delete _root;
@@ -921,25 +928,61 @@ namespace srrg_hbst {
 
       // ds write leaf information
       for (const Node* leaf : leafs) {
-        // ds TODO move to node
-        typename Node::Header header_leaf;
-        header_leaf.depth                             = leaf->depth;
-        header_leaf.index_split_bit                   = leaf->index_split_bit;
-        header_leaf.has_leafs                         = leaf->has_leafs;
-        header_leaf.number_of_matchables_compressed   = leaf->matchables.size();
-        header_leaf.number_of_matchables_uncompressed = leaf->_number_of_matchables;
+        assert(leaf->_header.depth > 0);
+        assert(leaf->index_split_bit == -1);
+        assert(leaf->has_leafs == false);
+#ifndef SRRG_MERGE_DESCRIPTORS
+        assert(leaf->_header.number_of_matchables_uncompressed ==
+               leaf->_header.number_of_matchables_compressed);
+#endif
         GUARDED_IO(outfile,
                    write,
-                   reinterpret_cast<const char*>(&header_leaf),
-                   sizeof(header_leaf),
+                   reinterpret_cast<const char*>(&leaf->_header),
+                   sizeof(leaf->_header),
                    "BinaryTree::write|ERROR: unable to write leaf header");
-        assert(header_leaf.number_of_matchables_uncompressed >= leaf->matchables.size());
+
+        // ds store split bit index order
+        const Node* current = leaf;
+        std::vector<int32_t> indices_split_bit;
+        indices_split_bit.reserve(leaf->_header.depth);
+        while (current) {
+          indices_split_bit.emplace_back(current->index_split_bit);
+          current = current->parent;
+        }
+        for (auto it = indices_split_bit.rbegin(); it != indices_split_bit.rend(); ++it) {
+          GUARDED_IO(outfile,
+                     write,
+                     reinterpret_cast<const char*>(&*it),
+                     sizeof(int32_t),
+                     "BinaryTree::write|ERROR: unable to write bit index order");
+        }
+
+        // ds serialize matchables (descriptor) data
+        assert(leaf->_header.number_of_matchables_uncompressed >= leaf->matchables.size());
         for (const Matchable* matchable : leaf->matchables) {
           GUARDED_IO(outfile,
                      write,
                      reinterpret_cast<const char*>(&matchable->descriptor),
                      Matchable::raw_descriptor_size_bytes,
                      "BinaryTree::write|ERROR: unable to write descriptor data");
+          GUARDED_IO(outfile,
+                     write,
+                     reinterpret_cast<const char*>(&matchable->number_of_objects),
+                     sizeof(uint64_t),
+                     "BinaryTree::write|ERROR: unable to write number of objects");
+          assert(matchable->number_of_objects == matchable->objects.size());
+          for (const ObjectMapElement& element : matchable->objects) {
+            GUARDED_IO(outfile,
+                       write,
+                       reinterpret_cast<const char*>(&element.first),
+                       sizeof(uint64_t),
+                       "BinaryTree::write|ERROR: unable to write object key");
+            GUARDED_IO(outfile,
+                       write,
+                       reinterpret_cast<const char*>(&element.second),
+                       sizeof(ObjectType),
+                       "BinaryTree::write|ERROR: unable to write object data");
+          }
         }
       }
       outfile.close();
@@ -961,11 +1004,8 @@ namespace srrg_hbst {
 
       // ds check endianness consistency
       char endianness_check[] = {char(1)};
-      if (!infile.read(endianness_check, 1)) {
-        std::cerr << "BinaryTree::read|ERROR: unable to read endian byte" << std::endl;
-        infile.close();
-        return false;
-      }
+      GUARDED_IO(
+        infile, read, endianness_check, 1, "BinaryTree::read|ERROR: unable to read endian byte");
       if (endianness_check[0] != char(0)) {
         std::cerr << "BinaryTree::read|ERROR: invalid endianness, database saved on different arch"
                   << std::endl;
@@ -982,37 +1022,171 @@ namespace srrg_hbst {
       }
       assert(_added_identifiers_train.size() == _header.number_of_training_entries);
 
+      // ds leaf buffer (static to allow easy escapes without requiring deallocation)
+      // ds TODO use more compact data structure(s)
+      std::vector<typename Node::Header> leaf_headers;
+      std::vector<std::vector<Descriptor>> descriptors_per_leaf;
+      std::vector<std::vector<ObjectMap>> objects_per_descriptor_per_leaf;
+      std::vector<std::vector<int32_t>> bit_indexes_per_leaf;
+      leaf_headers.reserve(_header.number_of_leafs);
+      descriptors_per_leaf.reserve(_header.number_of_leafs);
+      bit_indexes_per_leaf.reserve(_header.number_of_leafs);
+
       // ds read leafs with matchable data
       size_t number_of_read_matchables = 0;
       for (size_t i = 0; i < _header.number_of_leafs; ++i) {
-        // ds read leaf header
-        typename Node::Header header_leaf;
+        typename Node::Header leaf_header;
         GUARDED_IO(infile,
                    read,
-                   reinterpret_cast<char*>(&header_leaf),
-                   sizeof(header_leaf),
+                   reinterpret_cast<char*>(&leaf_header),
+                   sizeof(leaf_header),
                    "BinaryTree::read|ERROR: unable to read Node header");
+        assert(leaf_header.depth > 0);
+        assert(leaf_header.number_of_matchables_uncompressed > 0);
+#ifdef SRRG_MERGE_DESCRIPTORS
+        assert(leaf_header.number_of_matchables_compressed <=
+               leaf_header.number_of_matchables_uncompressed);
+#else
+        assert(leaf_header.number_of_matchables_uncompressed ==
+               leaf_header.number_of_matchables_compressed);
+#endif
+
+        // ds read split bit indices order - note that we also have to read the -1 of the leaf
+        std::vector<int32_t> indices_split_bit(leaf_header.depth + 1);
+        for (size_t j = 0; j < leaf_header.depth + 1; ++j) {
+          GUARDED_IO(infile,
+                     read,
+                     reinterpret_cast<char*>(&indices_split_bit[j]),
+                     sizeof(int32_t),
+                     "BinaryTree::read|ERROR: unable to read bit index order");
+        }
+        assert(indices_split_bit.back() == -1);
 
         // ds read matchables of this leaf
-        for (size_t j = 0; j < header_leaf.number_of_matchables_compressed; ++j) {
+        std::vector<Descriptor> descriptors;
+        std::vector<ObjectMap> objects_per_descriptor;
+        descriptors.reserve(leaf_header.number_of_matchables_compressed);
+        objects_per_descriptor.reserve(leaf_header.number_of_matchables_compressed);
+        for (size_t j = 0; j < leaf_header.number_of_matchables_compressed; ++j) {
           Descriptor descriptor;
           GUARDED_IO(infile,
                      read,
                      reinterpret_cast<char*>(&descriptor),
                      Matchable::raw_descriptor_size_bytes,
                      "BinaryTree::read|ERROR: unable to read Matchable data");
-          ++number_of_read_matchables;
+          descriptors.emplace_back(descriptor);
+          uint64_t number_of_objects = 0;
+          GUARDED_IO(infile,
+                     read,
+                     reinterpret_cast<char*>(&number_of_objects),
+                     sizeof(uint64_t),
+                     "BinaryTree::read|ERROR: unable to read number of objects");
+          ObjectMap objects;
+          for (size_t index_object = 0; index_object < number_of_objects; ++index_object) {
+            uint64_t key = 0;
+            ObjectType object;
+            GUARDED_IO(infile,
+                       read,
+                       reinterpret_cast<char*>(&key),
+                       sizeof(uint64_t),
+                       "BinaryTree::read|ERROR: unable to read object key");
+            GUARDED_IO(infile,
+                       read,
+                       reinterpret_cast<char*>(&object),
+                       sizeof(ObjectType),
+                       "BinaryTree::read|ERROR: unable to read object");
+            objects.insert(std::make_pair(key, object));
+          }
+          objects_per_descriptor.emplace_back(objects);
         }
+        number_of_read_matchables += descriptors.size();
+        leaf_headers.emplace_back(leaf_header);
+        descriptors_per_leaf.emplace_back(descriptors);
+        objects_per_descriptor_per_leaf.emplace_back(objects_per_descriptor);
+        bit_indexes_per_leaf.emplace_back(indices_split_bit);
       }
+      infile.close();
 
       // ds consistency check
       if (number_of_read_matchables != _header.number_of_matchables_compressed) {
         std::cerr << "BinaryTree::read|ERROR: number of loaded matchables inconsistent with header"
                   << std::endl;
-        infile.close();
         return false;
       }
-      infile.close();
+
+      // ds after this point we use dynamic memory to build the tree - no exceptions are thrown!
+      // ds assemble actual database by evaluating all leafs
+      _root = new Node();
+      assert(leaf_headers.size() == bit_indexes_per_leaf.size());
+      for (size_t i = 0; i < leaf_headers.size(); ++i) {
+        const typename Node::Header& leaf_header             = leaf_headers[i];
+        const std::vector<Descriptor>& descriptors           = descriptors_per_leaf[i];
+        const std::vector<int32_t>& bit_index_order          = bit_indexes_per_leaf[i];
+        const std::vector<ObjectMap>& objects_per_descriptor = objects_per_descriptor_per_leaf[i];
+
+        // ds grab any descriptor for evaluation decision rule
+        // ds this is fine since all the descriptors reside in the same leaf and satisfy that rule
+        const Descriptor& descriptor_sample = descriptors.back();
+
+        // ds start from root for each leaf
+        Node* current = _root;
+        while (current) {
+          // ds terminate if we reached a leaf
+          if (bit_index_order[current->_header.depth] == -1) {
+            assert(current->_header.depth == leaf_header.depth);
+            assert(descriptors.size() == leaf_header.number_of_matchables_compressed);
+
+            // ds populate matchables of the leaf
+            assert(current->matchables.empty());
+            current->matchables.reserve(descriptors.size());
+            for (size_t index_descriptor = 0; index_descriptor < descriptors.size();
+                 ++index_descriptor) {
+              current->matchables.emplace_back(new Matchable(
+                objects_per_descriptor[index_descriptor], descriptors[index_descriptor]));
+            }
+            current->_header = std::move(leaf_header);
+            _matchables.insert(
+              _matchables.end(), current->matchables.begin(), current->matchables.end());
+            break;
+          } else {
+            // ds otherwise it is always an intermediate node
+            current->has_leafs = true;
+          }
+
+          // ds if this node has not been initialized yet
+          if (current->index_split_bit != bit_index_order[current->_header.depth]) {
+            current->index_split_bit                    = bit_index_order[current->_header.depth];
+            current->bit_mask[current->index_split_bit] = 0;
+          }
+
+          // ds spawn leafs if necessary (we have a complete tree)
+          if (!current->right) {
+            current->right                = new Node();
+            current->right->_header.depth = current->_header.depth + 1;
+            current->right->parent        = current;
+          }
+          if (!current->left) {
+            current->left                = new Node();
+            current->left->_header.depth = current->_header.depth + 1;
+            current->left->parent        = current;
+          }
+
+          // ds traverse tree
+          if (descriptor_sample[current->index_split_bit]) {
+            current = current->right;
+          } else {
+            current = current->left;
+          }
+        }
+      }
+
+      // ds consistency check
+      if (_matchables.size() != _header.number_of_matchables_compressed) {
+        std::cerr << "BinaryTree::read|ERROR: unable to reconstruct tree with read matchables "
+                     "(check HBST version used to generate database)"
+                  << std::endl;
+        return false;
+      }
       return true;
     }
 
@@ -1180,6 +1354,8 @@ namespace srrg_hbst {
         // ds if matching distance is within the threshold
         if (distance < maximum_distance_matching_) {
           const uint64_t& identifer_tree_reference = matchable_reference->_image_identifier;
+          assert(matchable_reference->objects.find(identifer_tree_reference) !=
+                 matchable_reference->objects.end());
           ObjectType object_reference =
             std::move(matchable_reference->objects.at(identifer_tree_reference));
 
