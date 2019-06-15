@@ -1,7 +1,9 @@
 #pragma once
-#include "binary_node.hpp"
+#include <algorithm>
 #include <map>
 #include <memory>
+
+#include "binary_node.hpp"
 
 // ds helper macro for controlled reading and writing operations
 #define GUARDED_IO(FILE, IO_OPERATION, VARIABLE, SIZE, ERROR_MESSAGE) \

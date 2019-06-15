@@ -36,7 +36,8 @@ if(catkin_FOUND)
   catkin_add_gtest(test_streaming tests/test_streaming.cpp)
   target_link_libraries(test_streaming ${catkin_LIBRARIES})
   
-  #ds unittest target with merging
+  #ds unittest target with merging - configure default flags and build
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Werror -pedantic")
   catkin_add_gtest(test_streaming_merging tests/test_streaming.cpp)
   target_compile_definitions(test_streaming_merging PRIVATE SRRG_MERGE_DESCRIPTORS)
   target_link_libraries(test_streaming_merging ${catkin_LIBRARIES})

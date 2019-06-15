@@ -2,7 +2,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <random>
-#include <srrg_hbst/types/binary_tree.hpp>
+
+#include "srrg_hbst/types/binary_tree.hpp"
 
 using namespace srrg_hbst;
 typedef BinaryTree256<size_t> Tree;
