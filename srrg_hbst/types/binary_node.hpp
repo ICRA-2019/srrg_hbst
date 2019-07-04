@@ -1,7 +1,8 @@
 #pragma once
-#include "binary_match.hpp"
 #include <cmath>
 #include <random>
+
+#include "binary_match.hpp"
 
 namespace srrg_hbst {
 

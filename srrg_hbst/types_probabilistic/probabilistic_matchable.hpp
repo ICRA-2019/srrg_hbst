@@ -1,6 +1,7 @@
 #pragma once
-#include "srrg_hbst/types/binary_matchable.hpp"
 #include <Eigen/Core>
+
+#include "srrg_hbst/types/binary_matchable.hpp"
 
 namespace srrg_hbst {
 

@@ -1,7 +1,11 @@
 #pragma once
-#include "binary_node.hpp"
-#include <map>
+#include <fstream>
+#include <iostream>
 #include <memory>
+#include <set>
+#include <unordered_map>
+
+#include "binary_node.hpp"
 
 // ds helper macro for controlled reading and writing operations
 #define GUARDED_IO(FILE, IO_OPERATION, VARIABLE, SIZE, ERROR_MESSAGE) \
@@ -29,7 +33,7 @@ namespace srrg_hbst {
     using ObjectMap             = typename Matchable::ObjectMap;
     using ObjectMapElement      = std::pair<uint64_t, ObjectType>;
     using MatchVector           = std::vector<Match>;
-    using MatchVectorMap        = std::map<uint64_t, std::vector<Match>>;
+    using MatchVectorMap        = std::unordered_map<uint64_t, std::vector<Match>>;
     using MatchVectorMapElement = std::pair<uint64_t, std::vector<Match>>;
 
 #ifdef SRRG_MERGE_DESCRIPTORS
