@@ -240,8 +240,8 @@ namespace srrg_hbst {
                Descriptor bit_mask_,
                const SplittingStrategy& train_mode_) :
       parent(parent_),
-      matchables(matchables_),
       _header(depth_),
+      matchables(matchables_),
       bit_mask(bit_mask_) {
 #ifdef SRRG_MERGE_DESCRIPTORS
       // ds recompute current number of contained merged matchables TODO make this less horribly

@@ -66,8 +66,8 @@ namespace srrg_hbst {
     //! @brief constructor from object map
     BinaryMatchable(ObjectMap objects_, const Descriptor& descriptor_) :
       descriptor(descriptor_),
-      number_of_objects(objects_.size()),
       objects(objects_),
+      number_of_objects(objects_.size()),
       _image_identifier(objects_.begin()->first),
       _object(objects_.begin()->second) {
       assert(number_of_objects == objects.size());
