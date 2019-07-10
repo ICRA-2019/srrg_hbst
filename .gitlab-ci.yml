@@ -19,7 +19,7 @@ before_script:
   - ln -s /builds/srrg-software/srrg_hbst srrg_hbst
   
   #ds move back to catkin workspace level
-  cd ..
+  - cd ..
 
 # Build targets
 ubuntu_16_04_ros_kinetic_release:
