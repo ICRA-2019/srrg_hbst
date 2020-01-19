@@ -1,30 +1,30 @@
+#ds pipeline stages
+stages:
+  - wash_and_dry #ds no artifacts thrown around here
+
 before_script:
 
   #ds repo gets locally cloned into: /builds/srrg-software/srrg_hbst
 
-  #ds set up machine
-  - apt-get update 
-  - apt-get install -y sudo ssh openssh-client git
-  - apt-get upgrade -y
-
   #ds generic build dependencies (valid for ubuntu 16.04 and 18.04)
+  - apt-get update 
   - apt install python-catkin-tools -y
   - apt install build-essential -y
   - apt install libeigen3-dev -y
 
   #ds set up catkin workspace
   - cd && mkdir -p workspace/src && cd workspace/src
-  
+
   #ds link this repository for build
   - ln -s /builds/srrg-software/srrg_hbst srrg_hbst
-  
+
   #ds move back to catkin workspace level
   - cd ..
 
 # Build targets
 ubuntu_16_04_ros_kinetic_release:
   image: osrf/ros:kinetic-desktop-full-xenial
-  stage: build
+  stage: wash_and_dry
   script:
     - apt install libqglviewer-dev -y
     - catkin build srrg_hbst
@@ -36,7 +36,7 @@ ubuntu_16_04_ros_kinetic_release:
 
 ubuntu_16_04_ros_kinetic_debug:
   image: osrf/ros:kinetic-desktop-full-xenial
-  stage: build
+  stage: wash_and_dry
   script:
     - apt install libqglviewer-dev -y
     - catkin build srrg_hbst -DCMAKE_BUILD_TYPE=DEBUG
@@ -48,7 +48,7 @@ ubuntu_16_04_ros_kinetic_debug:
 
 ubuntu_18_04_ros_melodic_release:
   image: osrf/ros:melodic-desktop-full-bionic
-  stage: build
+  stage: wash_and_dry
   script:
     - apt install libqglviewer-dev-qt5 -y
     - catkin build srrg_hbst
@@ -60,7 +60,7 @@ ubuntu_18_04_ros_melodic_release:
 
 ubuntu_18_04_ros_melodic_debug:
   image: osrf/ros:melodic-desktop-full-bionic
-  stage: build
+  stage: wash_and_dry
   script:
     - apt install libqglviewer-dev-qt5 -y
     - catkin build srrg_hbst -DCMAKE_BUILD_TYPE=DEBUG
