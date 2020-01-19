@@ -29,7 +29,10 @@ ubuntu_16_04_ros_kinetic_release:
     - apt install libqglviewer-dev -y
     - catkin build srrg_hbst
     - catkin build srrg_hbst --catkin-make-args tests
+    - /root/workspace/devel/lib/srrg_hbst/test_search
+    - /root/workspace/devel/lib/srrg_hbst/test_search_merging
     - /root/workspace/devel/lib/srrg_hbst/test_streaming
+    - /root/workspace/devel/lib/srrg_hbst/test_streaming_merging
 
 ubuntu_16_04_ros_kinetic_debug:
   image: osrf/ros:kinetic-desktop-full-xenial
@@ -38,7 +41,10 @@ ubuntu_16_04_ros_kinetic_debug:
     - apt install libqglviewer-dev -y
     - catkin build srrg_hbst -DCMAKE_BUILD_TYPE=DEBUG
     - catkin build srrg_hbst --catkin-make-args tests
+    - /root/workspace/devel/lib/srrg_hbst/test_search
+    - /root/workspace/devel/lib/srrg_hbst/test_search_merging
     - /root/workspace/devel/lib/srrg_hbst/test_streaming
+    - /root/workspace/devel/lib/srrg_hbst/test_streaming_merging
 
 ubuntu_18_04_ros_melodic_release:
   image: osrf/ros:melodic-desktop-full-bionic
@@ -47,7 +53,10 @@ ubuntu_18_04_ros_melodic_release:
     - apt install libqglviewer-dev-qt5 -y
     - catkin build srrg_hbst
     - catkin build srrg_hbst --catkin-make-args tests
+    - /root/workspace/devel/lib/srrg_hbst/test_search
+    - /root/workspace/devel/lib/srrg_hbst/test_search_merging
     - /root/workspace/devel/lib/srrg_hbst/test_streaming
+    - /root/workspace/devel/lib/srrg_hbst/test_streaming_merging
 
 ubuntu_18_04_ros_melodic_debug:
   image: osrf/ros:melodic-desktop-full-bionic
@@ -56,5 +65,8 @@ ubuntu_18_04_ros_melodic_debug:
     - apt install libqglviewer-dev-qt5 -y
     - catkin build srrg_hbst -DCMAKE_BUILD_TYPE=DEBUG
     - catkin build srrg_hbst --catkin-make-args tests
+    - /root/workspace/devel/lib/srrg_hbst/test_search
+    - /root/workspace/devel/lib/srrg_hbst/test_search_merging
     - /root/workspace/devel/lib/srrg_hbst/test_streaming
+    - /root/workspace/devel/lib/srrg_hbst/test_streaming_merging
 

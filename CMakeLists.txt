@@ -32,12 +32,14 @@ if(catkin_FOUND)
   #the higher this value, the more compact and efficient becomes the tree at the cost of matching accuracy
   #this flag is recommended for large-scale datasets and lifelong recognition applications
   
-  #ds unittest target without merging
+  #ds unittest targets without merging
+  catkin_add_gtest(test_search tests/test_search.cpp)
   catkin_add_gtest(test_streaming tests/test_streaming.cpp)
   target_link_libraries(test_streaming ${catkin_LIBRARIES})
   
-  #ds unittest target with merging - configure default flags and build
+  #ds unittest targets with merging - this should not change the behavior - configure default flags and build
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Werror -pedantic")
+  catkin_add_gtest(test_search_merging tests/test_search.cpp)
   catkin_add_gtest(test_streaming_merging tests/test_streaming.cpp)
   target_compile_definitions(test_streaming_merging PRIVATE SRRG_MERGE_DESCRIPTORS)
   target_link_libraries(test_streaming_merging ${catkin_LIBRARIES})

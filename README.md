@@ -5,9 +5,9 @@ Lightweight and lightning-fast header-only library for binary descriptor-based V
 [<img src="https://img.youtube.com/vi/MwmzJygl8XE/0.jpg" width="250">](https://www.youtube.com/watch?v=MwmzJygl8XE)
 [<img src="https://img.youtube.com/vi/f3h398t_zWo/0.jpg" width="250">](https://www.youtube.com/watch?v=f3h398t_zWo)
 
-Contributors: Dominik Schlegel, Giorgio Grisetti
+[![pipeline status](https://gitlab.com/srrg-software/srrg_hbst/badges/master/pipeline.svg)](https://gitlab.com/srrg-software/srrg_hbst/commits/master) Contributors: Dominik Schlegel, Giorgio Grisetti
 
-Supported (i.e. Tested) platforms:
+Supported (i.e. tested) platforms:
 - Linux: Ubuntu 14.04 LTS, Ubuntu 16.04 LTS, Ubuntu 18.04 LTS
 
 Minimum requirements:
